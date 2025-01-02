@@ -33,7 +33,7 @@ def fetch_historical_data(crypto_id, vs_currency, days):
 
 if __name__ == "__main__":
     # Example usage
-    crypto_id = "bitcoin"  # ID for Bitcoin
+    crypto_id = "dogecoin"  # ID for Bitcoin
     vs_currency = "usd"  # Comparing against USD
     days = 30  # Fetch data for the past 30 days
 
