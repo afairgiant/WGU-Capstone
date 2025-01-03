@@ -6,28 +6,28 @@
         Add a .gitignore file to exclude sensitive files (e.g., configs/api_keys.json and large datasets).
     1.3: Create a virtual environment:
 
-1.4: Install dependencies and save them to requirements.txt:
-
-    pip install pandas numpy matplotlib seaborn scikit-learn tensorflow streamlit requests
-    pip freeze > requirements.txt
+    1.4: Install dependencies and save them to requirements.txt:
+        pip install pandas numpy matplotlib seaborn scikit-learn tensorflow streamlit requests
+        pip freeze > requirements.txt
 
 2. Data Collection
 
-    2.1: Obtain an API key from CoinGecko (if required).
-    2.2: Write a script (src/data/data_loader.py) to fetch historical cryptocurrency data from CoinGecko.
-    2.3: Save the raw data in the data/raw/ folder as CSV files.
-    2.4: Run the script and verify that the data is being downloaded correctly.
+    2.1: Obtain an API key from CoinGecko (if required). <br />
+    2.2: Write a script (src/data/data_loader.py) to fetch historical cryptocurrency data from CoinGecko. <br />
+    2.3: Save the raw data in the data/raw/ folder as CSV files. <br />
+    2.4: Run the script and verify that the data is being downloaded correctly. <br />
 
 3. Data Preprocessing
 
-    3.1: Write a script (src/data/data_cleaning.py) to clean and preprocess the raw data:
-        Convert timestamps to datetime.
-        Handle missing values.
-        Remove duplicates.
-    3.2: Save the cleaned data in the data/processed/ folder.
-    3.3: Explore the data using a Jupyter notebook (notebooks/data_exploration.ipynb):
-        Visualize price trends using line charts.
-        Perform basic descriptive analysis.
+    3.1: Write a script (src/data/data_cleaning.py) to clean and preprocess the raw data:<br />
+        - Convert timestamps to datetime. <br />
+        - Handle missing values. <br />
+        - Remove duplicates.<br /> 
+
+    3.2: Save the cleaned data in the data/processed/ folder. <br />
+    3.3: Explore the data using a Jupyter notebook (notebooks/data_exploration.ipynb):<br />
+        - Visualize price trends using line charts.<br />
+        - Perform basic descriptive analysis. <br />
 
 4. Feature Engineering
 
@@ -36,7 +36,7 @@
         Price change percentages.
         Sentiment scores (if available).
         On-chain metrics like transaction volume or active wallets.
-    4.2: Save feature-enhanced datasets in the data/features/ folder.
+    4.2: Save feature-enhanced datasets in the data/features/ folder. <br />
 
 5. Model Development
 
@@ -44,7 +44,7 @@
         Split the data into training and testing sets.
         Train machine learning models (e.g., Linear Regression, Random Forest).
         Evaluate models using metrics like Mean Absolute Error (MAE) or Root Mean Squared Error (RMSE).
-    5.2: Experiment with models in a Jupyter notebook (notebooks/model_training.ipynb).
+    <br /> 5.2: Experiment with models in a Jupyter notebook (notebooks/model_training.ipynb).
     5.3: Save the best-performing model using joblib or pickle.
 
 6. Build the Dashboard
