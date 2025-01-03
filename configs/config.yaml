@@ -1,0 +1,6 @@
+cryptocurrencies:
+  - bitcoin
+  - ethereum
+  - dogecoin
+vs_currency: usd
+days: 30
