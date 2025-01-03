@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 
 
-def fetch_historical_data(crypto_id, vs_currency, days):
+def fetch_historical_data(crypto_id, vs_currency, days, output_path):
     """
     Fetch historical market data for a cryptocurrency from the CoinGecko API.
 
@@ -25,21 +25,21 @@ def fetch_historical_data(crypto_id, vs_currency, days):
         data = response.json()
         prices = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
         prices["timestamp"] = pd.to_datetime(prices["timestamp"], unit="ms")
-        return prices
-    else:
-        print(f"Error fetching data: {response.status_code}")
-        return None
-
-
-if __name__ == "__main__":
-    # Example usage
-    crypto_id = "dogecoin"  # ID for Bitcoin
-    vs_currency = "usd"  # Comparing against USD
-    days = 30  # Fetch data for the past 30 days
-
-    data = fetch_historical_data(crypto_id, vs_currency, days)
-
-    if data is not None:
-        output_path = os.path.join("data", "raw", f"{crypto_id}_historical.csv")
-        data.to_csv(output_path, index=False)
+        prices.to_csv(output_path, index=False)
         print(f"Data saved to {output_path}")
+    else:
+        raise Exception(f"Error fetching data: {response.status_code}")
+
+
+# if __name__ == "__main__":
+#     # Example usage
+#     crypto_id = "dogecoin"  # ID for Bitcoin
+#     vs_currency = "usd"  # Comparing against USD
+#     days = 30  # Fetch data for the past 30 days
+
+#     data = fetch_historical_data(crypto_id, vs_currency, days)
+
+#     if data is not None:
+#         output_path = os.path.join("data", "raw", f"{crypto_id}_historical.csv")
+#         data.to_csv(output_path, index=False)
+#         print(f"Data saved to {output_path}")

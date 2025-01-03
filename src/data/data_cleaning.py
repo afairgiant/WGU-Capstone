@@ -25,8 +25,8 @@ def preprocess_data(input_file, output_file):
     print(f"Cleaned data saved to {output_file}")
 
 
-if __name__ == "__main__":
-    raw_file = os.path.join("data", "raw", "dogecoin_historical.csv")
-    processed_file = os.path.join("data", "processed", "dogecoin_cleaned.csv")
+# if __name__ == "__main__":
+#     raw_file = os.path.join("data", "raw", "dogecoin_historical.csv")
+#     processed_file = os.path.join("data", "processed", "dogecoin_cleaned.csv")
 
-    preprocess_data(raw_file, processed_file)
+#     preprocess_data(raw_file, processed_file)
