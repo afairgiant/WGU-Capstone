@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,9 +9,13 @@ import pandas as pd
 import seaborn as sns
 import yaml
 from matplotlib.widgets import RangeSlider
+from prophet import Prophet
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Dynamically add the project root to the PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def load_config(config_file):
@@ -18,9 +23,11 @@ def load_config(config_file):
         with open(config_file, "r") as file:
             return yaml.safe_load(file)
     except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+        logging.error(f"Configuration file not found: {config_file}")
+        raise
     except yaml.YAMLError as e:
-        raise ValueError(f"Error parsing YAML configuration: {e}")
+        logging.error(f"Error parsing YAML configuration: {e}")
+        raise
 
 
 # def load_cleaned_data(crypto_id, data_dir):
@@ -33,7 +40,7 @@ def load_config(config_file):
 #     except Exception as e:
 #         raise ValueError(f"Error loading data for {crypto_id}: {e}")
 def load_cleaned_data(crypto_id, data_dir):
-    file_path = os.path.join(data_dir, f"{crypto_id}_cleaned.csv")
+    file_path = os.path.join(data_dir, f"{crypto_id}_final.csv")
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
     try:
@@ -43,6 +50,7 @@ def load_cleaned_data(crypto_id, data_dir):
         return data
     except Exception as e:
         raise ValueError(f"Error loading data for {crypto_id}: {e}")
+
 
 def plot_price_trend(data, crypto_id):
     try:
@@ -152,32 +160,76 @@ def explore_data(crypto_id, data):
         plot_price_distribution(data, crypto_id)
 
         # Additional analysis can go here
-        
+
     except Exception as e:
         logger.error(f"Error during exploration for {crypto_id}: {e}", exc_info=True)
 
 
-if __name__ == "__main__":
-    config_file = "configs/config.yaml"
+def predict_future(crypto_id, data_dir, periods):
+    """
+    Predict future prices for the given cryptocurrency using historical data.
+
+    Args:
+        crypto_id (str): Cryptocurrency ID (e.g., 'bitcoin').
+        data_dir (str): Directory containing cleaned data.
+        periods (int): Number of future days to predict.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the forecast.
+    """
+    logger.info(f"Predicting future prices for {crypto_id}...")
+
     try:
-        config = load_config(config_file)
+        # Load cleaned historical data
+        data = load_cleaned_data(crypto_id, data_dir)
+
+        # Ensure timestamp column is in datetime format and rename for Prophet
+        data["timestamp"] = pd.to_datetime(data["timestamp"])
+        data.rename(columns={"timestamp": "ds", "price": "y"}, inplace=True)
+
+        # Initialize and fit the Prophet model
+        model = Prophet()
+        model.fit(data)
+
+        # Create a dataframe for future dates and make predictions
+        future = model.make_future_dataframe(periods=periods)
+        forecast = model.predict(future)
+
+        # Visualize the forecast
+        model.plot(forecast)
+        plt.title(f"{crypto_id.capitalize()} Price Forecast")
+        plt.show()
+
+        model.plot_components(forecast)
+        plt.show()
+
+        logger.info(f"Prediction completed successfully for {crypto_id}.")
+        return forecast
+
+    except FileNotFoundError as e:
+        logger.error(f"Data file for {crypto_id} not found: {e}", exc_info=True)
+        raise
     except Exception as e:
-        raise SystemExit(f"Failed to load configuration: {e}")
+        logger.error(
+            f"Error predicting future prices for {crypto_id}: {e}", exc_info=True
+        )
+        raise
 
-    cryptocurrencies = config.get("cryptocurrencies", [])
-    data_dir = "data/processed"
 
-    if not cryptocurrencies:
-        raise ValueError("No cryptocurrencies specified in the configuration.")
+if __name__ == "__main__":
+    try:
+        config_file = "configs/config.yaml"
+        print(f"Resolved config file path: {config_file}")
 
-    for crypto_id in cryptocurrencies:
-        print(f"Exploring data for {crypto_id}...")
-        try:
-            data = load_cleaned_data(crypto_id, data_dir)
-            data["timestamp"] = pd.to_datetime(data["timestamp"])
-            plot_price_trend(data, crypto_id)
-            plot_price_distribution(data, crypto_id)
-        except Exception as e:
-            print(f"Error processing data for {crypto_id}: {e}")
+        config = load_config(config_file)
 
-    print("Data exploration completed!")
+        cryptocurrencies = config["cryptocurrencies"]
+        data_dir = "data/processed"
+
+        periods = 30
+        for crypto_id in cryptocurrencies:
+            forecast = predict_future(crypto_id, data_dir, periods)
+            print(forecast.head())  # Display the first few rows of the prediction
+
+    except Exception as e:
+        logger.error(f"Unexpected error in main workflow: {e}", exc_info=True)
