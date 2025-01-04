@@ -7,29 +7,27 @@ import requests
 import yaml
 
 # Ensure the logs directory exists
-log_dir = os.path.join(os.path.dirname(__file__), "../logs")
+log_dir = os.path.join(os.path.dirname(__file__), "../../logs")
 os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
-    filename="logs/data_loader.log",
+    filename=os.path.join(log_dir, "data_loader.log"),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
 
 def load_config(config_file):
-    """
-    Load configuration from a YAML file.
-
-    Args:
-        config_file (str): Path to the configuration file.
-
-    Returns:
-        dict: Parsed configuration as a dictionary.
-    """
-    with open(config_file, "r") as file:
-        return yaml.safe_load(file)
+    try:
+        with open(config_file, "r") as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        logging.error(f"Configuration file not found: {config_file}")
+        raise
+    except yaml.YAMLError as e:
+        logging.error(f"Error parsing YAML configuration: {e}")
+        raise
 
 
 def save_metadata(crypto_id, output_path):
@@ -38,52 +36,59 @@ def save_metadata(crypto_id, output_path):
         "source": "CoinGecko",
         "fetch_date": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
-    with open(os.path.join(output_path, f"{crypto_id}_metadata.json"), "w") as f:
-        json.dump(metadata, f, indent=4)
+    try:
+        with open(os.path.join(output_path, f"{crypto_id}_metadata.json"), "w") as f:
+            json.dump(metadata, f, indent=4)
+        logging.info(f"Metadata for {crypto_id} saved to {output_path}")
+    except Exception as e:
+        logging.error(f"Error saving metadata for {crypto_id}: {e}")
+        raise
 
 
 def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
-    """
-    Fetch historical market data for multiple cryptocurrencies from the CoinGecko API.
-
-    Args:
-        crypto_ids (list): List of CoinGecko IDs for cryptocurrencies (e.g., ['bitcoin', 'ethereum']).
-        vs_currency (str): The currency to compare against (e.g., 'usd').
-        days (int): Number of past days to fetch data for.
-        output_dir (str): Directory to save the output CSV files.
-
-    Returns:
-        None
-    """
     for crypto_id in crypto_ids:
         url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart"
         params = {"vs_currency": vs_currency, "days": days}
-        response = requests.get(url, params=params)
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
 
-        if response.status_code == 200:
             data = response.json()
-            prices = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-            prices["timestamp"] = pd.to_datetime(prices["timestamp"], unit="ms")
-            output_path = os.path.join(output_path, f"{crypto_id}_historical.csv")
-            prices.to_csv(output_path, index=False)
-            print(f"Data for {crypto_id} saved to {output_path}")
+            prices = pd.DataFrame(
+                data.get("prices", []), columns=["timestamp", "price"]
+            )
+            if prices.empty:
+                logging.warning(f"No price data available for {crypto_id}")
+                continue
 
-        else:
-            print(f"Error fetching data for {crypto_id}: {response.status_code}")
+            prices["timestamp"] = pd.to_datetime(prices["timestamp"], unit="ms")
+            output_file = os.path.join(output_path, f"{crypto_id}_historical.csv")
+            prices.to_csv(output_file, index=False)
+            logging.info(f"Data for {crypto_id} saved to {output_file}")
+
+            save_metadata(crypto_id, output_path)
+        except requests.RequestException as e:
+            logging.error(f"HTTP error fetching data for {crypto_id}: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error fetching data for {crypto_id}: {e}")
 
 
 if __name__ == "__main__":
-    # Load configuration
-    config = load_config("configs/config.yaml")
+    try:
+        config = load_config("configs/config.yaml")
 
-    # Extract parameters
-    crypto_ids = config["cryptocurrencies"]
-    vs_currency = config["vs_currency"]
-    days = config["days"]
-    output_dir = "data/raw"
+        crypto_ids = config.get("cryptocurrencies", [])
+        vs_currency = config.get("vs_currency", "usd")
+        days = config.get("days", 30)
+        output_dir = "data/raw"
 
-    # Ensure the output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+        if not crypto_ids:
+            logging.error("No cryptocurrencies specified in the configuration.")
+            raise ValueError(
+                "The configuration must specify at least one cryptocurrency."
+            )
 
-    # Fetch data using parameters from the configuration file
-    fetch_historical_data(crypto_ids, vs_currency, days, output_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        fetch_historical_data(crypto_ids, vs_currency, days, output_dir)
+    except Exception as e:
+        logging.critical(f"Critical error in data loading process: {e}")
