@@ -7,6 +7,7 @@ import yaml
 # Dynamically add the project root to the PYTHONPATH
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.data import data_exploration
 from src.data.data_cleaning import preprocess_data
 from src.data.data_exploration import explore_data
 from src.data.data_loader import fetch_historical_data
@@ -98,8 +99,39 @@ def process_data(config_file=None):
             continue
 
 
+def visuals(config_file=None):
+    logging.info("Exploring data...")
+    # Determine the configuration file path
+    config_file = config_file or os.getenv("CONFIG_FILE", "configs/config.yaml")
+
+    config = load_config(config_file)
+
+    try:
+        for crypto_id in config["cryptocurrencies"]:
+            processed_file = os.path.join("data/processed", f"{crypto_id}_cleaned.csv")
+            if not os.path.exists(processed_file):
+                logging.warning(
+                    f"Processed file not found for {crypto_id}: {processed_file}"
+                )
+                continue
+            try:
+                explore_data(crypto_id, processed_file)
+            except Exception as e:
+                logging.error(f"Error exploring data for {crypto_id}: {e}")
+                continue
+    except Exception as e:
+        logging.error(f"Error exploring data: {e}")
+        raise
+
+
+def main():
+    process_data()
+    visuals()
+
+
 if __name__ == "__main__":
     try:
         process_data()
+        visuals()
     except Exception as e:
         logging.critical(f"Critical error in processing: {e}")

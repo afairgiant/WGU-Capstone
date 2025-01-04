@@ -1,3 +1,5 @@
+import json
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -6,6 +8,9 @@ import pandas as pd
 import seaborn as sns
 import yaml
 from matplotlib.widgets import RangeSlider
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 def load_config(config_file):
@@ -106,22 +111,6 @@ def plot_price_trend(data, crypto_id):
     except Exception as e:
         raise ValueError(f"Error plotting price trend for {crypto_id}: {e}")
 
-        # Update function for the slider
-        def update(val):
-            start_date = pd.Timestamp.fromordinal(int(date_slider.val[0]))
-            end_date = pd.Timestamp.fromordinal(int(date_slider.val[1]))
-            mask = (data["timestamp"] >= start_date) & (data["timestamp"] <= end_date)
-            line.set_data(data["timestamp"][mask], data["price"][mask])
-            trend.set_data(data["timestamp"][mask], trend_line[mask])
-            ax.set_xlim(start_date, end_date)
-            fig.canvas.draw_idle()
-
-        date_slider.on_changed(update)
-
-        plt.show()
-    except Exception as e:
-        raise ValueError(f"Error plotting price trend for {crypto_id}: {e}")
-
 
 def plot_price_distribution(data, crypto_id):
     try:
@@ -140,7 +129,7 @@ def explore_data(crypto_id, data):
     Perform a consolidated exploration of the cryptocurrency data
     using the existing plotting functions.
     """
-    print(f"Exploring data for {crypto_id}...")
+    logger.info(f"Exploring data for {crypto_id}...")
     try:
         # Ensure the timestamp column is in datetime format
         data["timestamp"] = pd.to_datetime(data["timestamp"])
@@ -153,7 +142,7 @@ def explore_data(crypto_id, data):
 
         # Additional analysis (if required in the future) can go here
     except Exception as e:
-        print(f"Error during exploration for {crypto_id}: {e}")
+        logger.error(f"Error during exploration for {crypto_id}: {e}", exc_info=True)
 
 
 if __name__ == "__main__":

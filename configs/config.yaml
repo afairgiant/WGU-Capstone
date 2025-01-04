@@ -3,4 +3,4 @@ cryptocurrencies:
   - ethereum
   - dogecoin
 vs_currency: usd
-days: 30
+days: 90
