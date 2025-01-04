@@ -2,7 +2,8 @@ import os
 
 import streamlit as st
 import yaml
-from main_with_exploration import main as process_data_main
+
+from main import process_data
 
 
 def load_config(config_file):
@@ -28,7 +29,7 @@ def main():
 
     if st.button("Run Data Processing"):
         try:
-            process_data_main()
+            process_data()
             st.success("Data processing completed successfully!")
         except Exception as e:
             st.error(f"Error during data processing: {e}")

@@ -1,13 +1,19 @@
 import logging
 import os
+import sys
 
 import yaml
 
+# Dynamically add the project root to the PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.data.data_cleaning import preprocess_data
+from src.data.data_exploration import explore_data
 from src.data.data_loader import fetch_historical_data
 
 
 def setup_logging():
+    """Sets up logging with a defined format and DEBUG level."""
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -15,6 +21,7 @@ def setup_logging():
 
 
 def load_config(config_file):
+    """Loads configuration from a YAML file."""
     try:
         with open(config_file, "r") as file:
             return yaml.safe_load(file)
@@ -26,23 +33,41 @@ def load_config(config_file):
         raise
 
 
+def validate_config(config):
+    """Validates the required configuration values."""
+    if not config.get("cryptocurrencies"):
+        raise ValueError("Cryptocurrencies must be specified in the configuration.")
+    if config.get("days", 0) <= 0:
+        raise ValueError("Days must be a positive integer.")
+
+
 def create_directories(directories):
+    """Ensures specified directories exist."""
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
         logging.info(f"Directory ensured: {directory}")
 
 
-def process_data(config_file="configs/config.yaml"):
+def process_data(config_file=None):
+    """Main function to process cryptocurrency data."""
     setup_logging()
 
+    # Determine the configuration file path
+    config_file = config_file or os.getenv("CONFIG_FILE", "configs/config.yaml")
+
+    logging.info(f"Loading configuration from: {config_file}")
     config = load_config(config_file)
-    cryptocurrencies = config.get("cryptocurrencies", [])
+
+    # Validate configuration
+    try:
+        validate_config(config)
+    except ValueError as e:
+        logging.error(f"Configuration validation error: {e}")
+        raise
+
+    cryptocurrencies = config["cryptocurrencies"]
     vs_currency = config.get("vs_currency", "usd")
     days = config.get("days", 30)
-
-    if not cryptocurrencies:
-        logging.error("No cryptocurrencies specified in the configuration.")
-        raise ValueError("Cryptocurrencies must be specified in the configuration.")
 
     raw_dir = "data/raw"
     processed_dir = "data/processed"
@@ -50,7 +75,11 @@ def process_data(config_file="configs/config.yaml"):
     create_directories([raw_dir, processed_dir])
 
     logging.info("Fetching raw data...")
-    fetch_historical_data(cryptocurrencies, vs_currency, days, raw_dir)
+    try:
+        fetch_historical_data(cryptocurrencies, vs_currency, days, raw_dir)
+    except Exception as e:
+        logging.error(f"Error fetching historical data: {e}")
+        raise
 
     logging.info("Cleaning data...")
     for crypto_id in cryptocurrencies:
@@ -61,12 +90,16 @@ def process_data(config_file="configs/config.yaml"):
             logging.warning(f"Raw file not found for {crypto_id}: {raw_file}")
             continue
 
-        preprocess_data(raw_file, processed_file)
-        logging.info(f"Processed {crypto_id} data: {processed_file}")
+        try:
+            preprocess_data(raw_file, processed_file)
+            logging.info(f"Processed {crypto_id} data: {processed_file}")
+        except Exception as e:
+            logging.error(f"Error processing data for {crypto_id}: {e}")
+            continue
 
 
 if __name__ == "__main__":
     try:
         process_data()
     except Exception as e:
-        logging.error(f"Critical error in processing: {e}")
+        logging.critical(f"Critical error in processing: {e}")
