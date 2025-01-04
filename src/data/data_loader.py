@@ -1,10 +1,14 @@
+import json
 import logging
 import os
-from datetime import datetime
 
 import pandas as pd
 import requests
 import yaml
+
+# Ensure the logs directory exists
+log_dir = os.path.join(os.path.dirname(__file__), "../logs")
+os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +30,16 @@ def load_config(config_file):
     """
     with open(config_file, "r") as file:
         return yaml.safe_load(file)
+
+
+def save_metadata(crypto_id, output_path):
+    metadata = {
+        "crypto_id": crypto_id,
+        "source": "CoinGecko",
+        "fetch_date": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    with open(os.path.join(output_path, f"{crypto_id}_metadata.json"), "w") as f:
+        json.dump(metadata, f, indent=4)
 
 
 def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
@@ -50,7 +64,7 @@ def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
             data = response.json()
             prices = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
             prices["timestamp"] = pd.to_datetime(prices["timestamp"], unit="ms")
-            output_path = os.path.join(output_dir, f"{crypto_id}_historical.csv")
+            output_path = os.path.join(output_path, f"{crypto_id}_historical.csv")
             prices.to_csv(output_path, index=False)
             print(f"Data for {crypto_id} saved to {output_path}")
 
