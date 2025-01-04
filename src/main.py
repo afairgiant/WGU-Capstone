@@ -48,64 +48,6 @@ def create_directories(directories):
         os.makedirs(directory, exist_ok=True)
         logging.info(f"Directory ensured: {directory}")
 
-
-# def process_data(config_file=None):
-#     """Main function to process cryptocurrency data."""
-#     setup_logging()
-
-#     # Determine the configuration file path
-#     config_file = config_file or os.getenv("CONFIG_FILE", "configs/config.yaml")
-
-#     logging.info(f"Loading configuration from: {config_file}")
-#     config = load_config(config_file)
-
-#     # Validate configuration
-#     try:
-#         validate_config(config)
-#     except ValueError as e:
-#         logging.error(f"Configuration validation error: {e}")
-#         raise
-
-#     cryptocurrencies = config["cryptocurrencies"]
-#     vs_currency = config.get("vs_currency", "usd")
-#     days = config.get("days", 90)
-
-#     raw_dir = "data/raw"
-#     intermediate_dir = "data/intermediate"
-#     processed_dir = "data/processed"
-
-#     create_directories([raw_dir, intermediate_dir, processed_dir])
-
-#     logging.info("Fetching raw data...")
-#     try:
-#         fetch_historical_data(cryptocurrencies, vs_currency, days, raw_dir)
-#     except Exception as e:
-#         logging.error(f"Error fetching historical data: {e}")
-#         raise
-
-#     logging.info("Processing data...")
-#     for crypto_id in cryptocurrencies:
-#         raw_file = os.path.join(raw_dir, f"{crypto_id}_historical.csv")
-#         intermediate_file = os.path.join(intermediate_dir, f"{crypto_id}_cleaned.csv")
-#         processed_file = os.path.join(processed_dir, f"{crypto_id}_final.csv")
-
-#         if not os.path.exists(raw_file):
-#             logging.warning(f"Raw file not found for {crypto_id}: {raw_file}")
-#             continue
-
-#         try:
-#             # Step 1: Basic preprocessing
-#             preprocess_data(raw_file, intermediate_file)
-#             logging.info(f"Basic preprocessing complete for {crypto_id}: {intermediate_file}")
-
-#             # Step 2: Advanced preprocessing
-#             preprocess_historical_data(intermediate_file, processed_file)
-#             logging.info(f"Advanced preprocessing complete for {crypto_id}: {processed_file}")
-#         except Exception as e:
-#             logging.error(f"Error processing data for {crypto_id}: {e}")
-#             continue
-
-
 def call_visuals(config_file=None):
     logging.info("Exploring data...")
     # Determine the configuration file path
