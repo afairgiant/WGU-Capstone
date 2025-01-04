@@ -23,15 +23,26 @@ def load_config(config_file):
         raise ValueError(f"Error parsing YAML configuration: {e}")
 
 
+# def load_cleaned_data(crypto_id, data_dir):
+#     file_path = os.path.join(data_dir, f"{crypto_id}_cleaned.csv")
+#     if not os.path.exists(file_path):
+#         raise FileNotFoundError(f"File not found: {file_path}")
+#     try:
+#         # Load the data as a DataFrame
+#         return pd.read_csv(file_path)
+#     except Exception as e:
+#         raise ValueError(f"Error loading data for {crypto_id}: {e}")
 def load_cleaned_data(crypto_id, data_dir):
     file_path = os.path.join(data_dir, f"{crypto_id}_cleaned.csv")
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
     try:
-        return pd.read_csv(file_path)
+        data = pd.read_csv(file_path)
+        print(f"Loaded data type: {type(data)}")  # Debug statement
+        print(data.head())  # Debug statement to inspect the data
+        return data
     except Exception as e:
         raise ValueError(f"Error loading data for {crypto_id}: {e}")
-
 
 def plot_price_trend(data, crypto_id):
     try:
@@ -140,7 +151,8 @@ def explore_data(crypto_id, data):
         # Plot price distribution
         plot_price_distribution(data, crypto_id)
 
-        # Additional analysis (if required in the future) can go here
+        # Additional analysis can go here
+        
     except Exception as e:
         logger.error(f"Error during exploration for {crypto_id}: {e}", exc_info=True)
 

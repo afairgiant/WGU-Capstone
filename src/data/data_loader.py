@@ -6,6 +6,9 @@ import pandas as pd
 import requests
 import yaml
 
+
+API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K "
+
 # Ensure the logs directory exists
 log_dir = os.path.join(os.path.dirname(__file__), "../../logs")
 os.makedirs(log_dir, exist_ok=True)
@@ -44,6 +47,28 @@ def save_metadata(crypto_id, output_path):
         logging.error(f"Error saving metadata for {crypto_id}: {e}")
         raise
 
+def get_coin_list():
+    """
+    Fetch the list of available coins from the CoinGecko API and save it to a YAML file.
+    """
+    url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&api_key={API_KEY}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        coins_list = response.json()
+        coins = [coin["id"] for coin in coins_list]
+
+        # Save the list of coins to a YAML file
+        output_path = "configs/coins.yaml"
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w") as f:
+            yaml.dump(coins, f)
+        logging.info(f"Coin list saved to {output_path}")
+    except requests.RequestException as e:
+        logging.error(f"HTTP error fetching coin list: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error fetching coin list: {e}")
 
 def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
     for crypto_id in crypto_ids:
@@ -75,6 +100,7 @@ def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
 
 if __name__ == "__main__":
     try:
+        get_coin_list()
         config = load_config("configs/config.yaml")
 
         crypto_ids = config.get("cryptocurrencies", [])

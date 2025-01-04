@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto Predictor</title>
+</head>
+<body>
+    <h1>Crypto Predictor</h1>
+    <form method="POST">
+        <label for="coin_id">Coin ID:</label><br>
+        <select id="coin_id" name="coin_id">
+            {% for coin in coins %}
+            <option value="{{ coin }}">{{ coin }}</option>
+            {% endfor %}
+        </select><br>
+        <label for="days">Days:</label><br>
+        <input type="text" id="days" name="days"><br>
+        <input type="submit" value="Predict">
+    </form>
+    {% if predictions %}
+    <h2>Predictions for {{ coin_id }}, {{ days }} days:</h2>
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Price</th>
+        </tr>
+        {% for date, prediction in predictions.items() %}
+        <tr>
+            <td>{{ date }}</td>
+            <td>{{ prediction }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if error %}
+    <p>{{ error }}</p>
+    {% endif %}
+</body>
+</html>

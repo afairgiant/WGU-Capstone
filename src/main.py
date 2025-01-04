@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-
+import pandas as pd
 import yaml
 
 # Dynamically add the project root to the PYTHONPATH
@@ -115,10 +115,19 @@ def visuals(config_file=None):
                 )
                 continue
             try:
-                explore_data(crypto_id, processed_file)
+                # Load data as a DataFrame
+                data = pd.read_csv(processed_file)
+                
+                # Ensure timestamp column is in the correct format
+                data["timestamp"] = pd.to_datetime(data["timestamp"], errors="coerce")
+                data = data.dropna(subset=["timestamp"])  # Remove rows with invalid timestamps
+
+                # Call explore_data with the DataFrame
+                explore_data(crypto_id, data)
             except Exception as e:
                 logging.error(f"Error exploring data for {crypto_id}: {e}")
                 continue
+            
     except Exception as e:
         logging.error(f"Error exploring data: {e}")
         raise
@@ -130,6 +139,7 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.info("Starting program")
     try:
         process_data()
         visuals()
