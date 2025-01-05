@@ -3,12 +3,12 @@ import os
 import sys
 
 import pandas as pd
-import yaml
 
-# Dynamically add the project root to the PYTHONPATH
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Dynamically add the project root to the PYTHONPATH (use with caution)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
-from src.data import data_exploration
 from src.data.data_cleaning import process_data
 from src.data.data_exploration import explore_data, predict_future
 from src.data.data_loader import fetch_historical_data
@@ -19,6 +19,15 @@ from src.utils.utils import (
     setup_logging,
     validate_config,
 )
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Define the default configuration file path as a constant
+DEFAULT_CONFIG_FILE = "configs/config.yaml"
 
 
 def download_raw_data(config_file):
@@ -52,14 +61,14 @@ def download_raw_data(config_file):
         fetch_historical_data(cryptocurrencies, vs_currency, days, raw_dir)
         logging.info("Raw data download complete.")
     except Exception as e:
-        logging.error(f"Error downloading raw data: {e}")
+        logger.error(f"Error downloading raw data: {e}")
         raise
 
 
 def call_visuals(config_file=None):
     logging.info("Exploring data...")
     # Determine the configuration file path
-    config_file = config_file or os.getenv("CONFIG_FILE", "configs/config.yaml")
+    config_file = config_file or os.getenv("CONFIG_FILE", DEFAULT_CONFIG_FILE)
 
     config = load_config(config_file)
 
@@ -99,7 +108,6 @@ def main():
     Main entry point of the program.
     Handles raw data download, preprocessing, and optional exploration.
     """
-    setup_logging()
     logging.info("Starting main program...")
 
     config_file = "configs/config.yaml"
@@ -116,8 +124,7 @@ def main():
 
         logging.info("Program completed successfully.")
     except Exception as e:
-        logging.critical(f"Critical error in main program: {e}")
-        raise
+        logging.critical("Critical error in main program: %s", e, exc_info=True)
 
 
 if __name__ == "__main__":

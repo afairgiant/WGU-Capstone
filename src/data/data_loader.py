@@ -6,7 +6,6 @@ import pandas as pd
 import requests
 import yaml
 
-
 API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K "
 
 # Ensure the logs directory exists
@@ -47,6 +46,7 @@ def save_metadata(crypto_id, output_path):
         logging.error(f"Error saving metadata for {crypto_id}: {e}")
         raise
 
+
 def get_coin_list():
     """
     Fetch the list of available coins from the CoinGecko API and save it to a YAML file.
@@ -70,12 +70,22 @@ def get_coin_list():
     except Exception as e:
         logging.error(f"Unexpected error fetching coin list: {e}")
 
+
 def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
+    """
+    Fetch historical price data for given cryptocurrencies and save to CSV files.
+
+    Args:
+        crypto_ids (list): List of cryptocurrency IDs (e.g., ['bitcoin', 'ethereum']).
+        vs_currency (str): The target currency (e.g., 'usd').
+        days (int): Number of days of historical data to fetch.
+        output_path (str): Directory to save the fetched data.
+    """
     for crypto_id in crypto_ids:
         url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart"
         params = {"vs_currency": vs_currency, "days": days}
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
 
             data = response.json()
@@ -83,7 +93,7 @@ def fetch_historical_data(crypto_ids, vs_currency, days, output_path):
                 data.get("prices", []), columns=["timestamp", "price"]
             )
             if prices.empty:
-                logging.warning(f"No price data available for {crypto_id}")
+                logging.warning(f"No price data available for %s", crypto_id)
                 continue
 
             prices["timestamp"] = pd.to_datetime(prices["timestamp"], unit="ms")
