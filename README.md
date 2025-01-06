@@ -43,8 +43,8 @@
     5.1: Write scripts in the src/models/ folder to:
         Split the data into training and testing sets.
         Train machine learning models (e.g., Linear Regression, Random Forest).
-        Evaluate models using metrics like Mean Absolute Error (MAE) or Root Mean Squared Error (RMSE).
-    <br /> 5.2: Experiment with models in a Jupyter notebook (notebooks/model_training.ipynb).
+        Evaluate models using metrics like Mean Absolute Error (MAE) or Root Mean Squared Error (RMSE). <br />
+     5.2: Experiment with models in a Jupyter notebook (notebooks/model_training.ipynb).<br />
     5.3: Save the best-performing model using joblib or pickle.
 
 6. Build the Dashboard

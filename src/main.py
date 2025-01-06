@@ -10,8 +10,8 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.data.data_cleaning import process_data
-from src.data.data_exploration import explore_data, predict_future
 from src.data.data_downloader import fetch_historical_data
+from src.data.data_exploration import explore_data, predict_future
 from src.utils.utils import (
     create_directories,
     load_config,
@@ -46,12 +46,14 @@ def download_raw_data(config_file):
     try:
         validate_config(config)
     except ValueError as e:
-        logging.error(f"Configuration validation error: {e}")
+        logging.error("Configuration validation error: %s", e)
         raise
+    # Define the default number of days to fetch data for
+    DEFAULT_DAYS = 90
 
     cryptocurrencies = config["cryptocurrencies"]
     vs_currency = config.get("vs_currency", "usd")
-    days = config.get("days", 90)
+    days = config.get("days", DEFAULT_DAYS)
     raw_dir = "data/raw"
 
     # Ensure raw data directory exists
@@ -91,6 +93,7 @@ def call_visuals(config_file=None):
                 )  # Remove rows with invalid timestamps
 
                 # Call explore_data with the DataFrame
+                print("Exploring data for", crypto_id)
                 explore_data(crypto_id, data)
                 predict_future(crypto_id, data, 30)
 
