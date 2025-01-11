@@ -4,8 +4,9 @@ matplotlib
 seaborn
 scikit-learn
 #tensorflow  # or pytorch if using
-#pytorch
+torch # pytorch
 streamlit
 requests
 pyyaml
 flask
+prophet
