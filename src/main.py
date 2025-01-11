@@ -10,8 +10,8 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.data.data_cleaning import process_data
+from src.data.data_downloader import fetch_historical_data
 from src.data.data_exploration import explore_data, predict_future
-from src.data.data_loader import fetch_historical_data
 from src.utils.utils import (
     create_directories,
     load_config,
