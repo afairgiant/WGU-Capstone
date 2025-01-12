@@ -4,6 +4,8 @@ import time
 import pandas as pd
 import requests
 
+API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K"
+
 
 def download_and_save_ohlc_data(
     coin_id, days, output_file="src/streamlit_app/data/ohlc_data.csv"
