@@ -1,5 +1,6 @@
 import os
 import sys
+from http import server
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -161,8 +162,8 @@ with tab5:
     st.title("Testing")
     st.write("This is a test tab to try new things.")
 
-    # File uploader for the CSV
-    uploaded_file = st.file_uploader("Upload OHLC CSV File for Testing", type=["csv"])
+    # Path to the CSV file
+    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
 
     # Number of days for predictions
     days = st.number_input(
@@ -172,10 +173,10 @@ with tab5:
         value=30,
     )
 
-    if uploaded_file is not None:
+    if server_csv_path is not None:
         try:
             # Read the uploaded file as a DataFrame
-            data = pd.read_csv(uploaded_file)
+            data = pd.read_csv(server_csv_path)
 
             # Calculate the daily averages
             daily_averages = calculate_daily_average(data)
