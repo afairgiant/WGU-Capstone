@@ -1,18 +1,21 @@
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from functions import calculate_daily_average, run_ohlc_prediction
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
 # Create tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Home", "Charts", "Prediction", "About"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["Home", "Charts", "Polynomial Prediction", "About", "Testing"]
+)
 
 # Tab 1: Home
 with tab1:
@@ -53,7 +56,7 @@ with tab2:
 
 # Tab 3: Futures
 with tab3:
-    st.title("Bitcoin Price Prediction")
+    st.title("Bitcoin Price Prediction-Polynomial Regression")
 
     # Resolve the file path
     relative_path = os.path.join("..", "data", "processed", "bitcoin_final.csv")
@@ -152,7 +155,66 @@ with tab4:
         the data.
         """
     )
-# Run the function
-# if __name__ == "__main__":
-# st.title("Page1: Basic Charts")
-# basic_charts()
+
+# Tab 5: Testing
+with tab5:
+    st.title("Testing")
+    st.write("This is a test tab to try new things.")
+
+    # File uploader for the CSV
+    uploaded_file = st.file_uploader("Upload OHLC CSV File for Testing", type=["csv"])
+
+    # Number of days for predictions
+    days = st.number_input(
+        "Enter the number of future days to predict",
+        min_value=1,
+        max_value=365,
+        value=30,
+    )
+
+    if uploaded_file is not None:
+        try:
+            # Read the uploaded file as a DataFrame
+            data = pd.read_csv(uploaded_file)
+
+            # Calculate the daily averages
+            daily_averages = calculate_daily_average(data)
+
+            # Run the prediction function
+            predictions = run_ohlc_prediction(data, days)
+
+            # Display the predictions in a table
+            st.subheader("Predicted Prices")
+            st.dataframe(predictions)
+
+            # Plot the predictions and daily averages
+            st.subheader(f"Price Predictions and Daily Averages ({days} Days)")
+            fig, ax = plt.subplots()
+
+            # Plot daily averages
+            ax.plot(
+                daily_averages["Date"],
+                daily_averages["Average Price"],
+                label="Daily Average",
+                color="blue",
+                marker="o",
+            )
+
+            # Plot predictions
+            ax.plot(
+                predictions["Date"],
+                predictions["Predicted Price"],
+                label="Predicted Price",
+                color="orange",
+                marker="x",
+            )
+
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Price (USD)")
+            ax.set_title(f"Predicted Prices and Daily Averages ({days} Days)")
+            ax.legend()
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
