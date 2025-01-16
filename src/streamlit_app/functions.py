@@ -6,10 +6,13 @@ import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
+import tensorflow as tf
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential
 
 
 def run_ohlc_prediction(data, days):
@@ -125,3 +128,97 @@ def calculate_daily_average(data):
     print("Daily averages calculated:", daily_avg.head())
 
     return daily_avg
+
+
+def lstm_crypto_forecast(data, days):
+    """
+    Predict future cryptocurrency prices using an LSTM model.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing OHLC data.
+        days (int): Number of future days to predict.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing dates and predicted prices.
+    """
+
+    # Check for GPUs
+    #    print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
+
+    # List detected GPUs
+    #    print("GPUs: ", tf.config.list_physical_devices("GPU"))
+
+    # Ensure required columns exist
+    required_columns = ["time", "close"]
+    if not all(col in data.columns for col in required_columns):
+        missing_cols = [col for col in required_columns if col not in data.columns]
+        raise ValueError(f"The data is missing columns: {missing_cols}")
+
+    # Convert time column to datetime
+    data["time"] = pd.to_datetime(data["time"])
+    data.set_index("time", inplace=True)
+
+    # Scale the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(data[["close"]])
+
+    # Create sequences for LSTM
+    def create_sequences(data, n_steps):
+        X, y = [], []
+        for i in range(n_steps, len(data)):
+            X.append(data[i - n_steps : i, 0])
+            y.append(data[i, 0])
+        return np.array(X), np.array(y)
+
+    n_steps = 60  # Use the last 60 days to predict the next day
+    X, y = create_sequences(scaled_data, n_steps)
+
+    # Reshape for LSTM input
+    X = X.reshape((X.shape[0], X.shape[1], 1))
+
+    # Split into training and test sets
+    split = int(0.8 * len(X))
+    X_train, X_test = X[:split], X[split:]
+    y_train, y_test = y[:split], y[split:]
+
+    # Build the LSTM model
+    model = Sequential(
+        [
+            LSTM(50, return_sequences=True, input_shape=(n_steps, 1)),
+            LSTM(50, return_sequences=False),
+            Dense(25),
+            Dense(1),
+        ]
+    )
+
+    model.compile(optimizer="adam", loss="mean_squared_error")
+
+    # Train the model
+    model.fit(X_train, y_train, batch_size=32, epochs=100, verbose=1)
+
+    # Predict future prices
+    future_predictions = []
+    last_sequence = scaled_data[-n_steps:]
+    for _ in range(days):
+        # Reshape the last sequence for prediction
+        last_sequence_reshaped = last_sequence.reshape((1, n_steps, 1))
+        next_prediction = model.predict(last_sequence_reshaped, verbose=0)
+        future_predictions.append(next_prediction[0, 0])
+
+        # Update the last sequence
+        last_sequence = np.append(last_sequence[1:], [[next_prediction[0, 0]]], axis=0)
+
+    # Transform predictions back to the original scale
+    future_predictions = scaler.inverse_transform(
+        np.array(future_predictions).reshape(-1, 1)
+    )
+
+    # Generate future dates
+    last_date = data.index[-1]
+    future_dates = [last_date + timedelta(days=i) for i in range(1, days + 1)]
+
+    # Create a DataFrame for predictions
+    predictions = pd.DataFrame(
+        {"Date": future_dates, "Predicted Price": future_predictions.flatten()}
+    )
+    return predictions

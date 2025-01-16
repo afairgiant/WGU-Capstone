@@ -1,8 +1,10 @@
 import os
 import time
+from datetime import datetime
 
 import pandas as pd
 import requests
+from pyparsing import C
 
 API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K"
 
@@ -59,7 +61,9 @@ if __name__ == "__main__":
     # Parameters
     COIN_ID = "bitcoin"
     DAYS = 30
+
     OUTPUT_FILE = "src/streamlit_app/data/ohlc_data.csv"
+    OUTPUT_FILE_2 = "src/streamlit_app/data/ohlc_data_training.csv"
 
     # Download, clean, and save data
     download_and_save_ohlc_data(COIN_ID, DAYS, OUTPUT_FILE)

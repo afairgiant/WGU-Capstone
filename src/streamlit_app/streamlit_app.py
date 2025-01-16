@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from functions import calculate_daily_average, run_ohlc_prediction
+from functions import calculate_daily_average, lstm_crypto_forecast, run_ohlc_prediction
+from matplotlib import markers
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
@@ -206,8 +207,9 @@ with tab5:
                 predictions["Date"],
                 predictions["Predicted Price"],
                 label="Predicted Price",
-                color="orange",
-                marker="x",
+                color="red",
+                marker="o",
+                markersize=4,
             )
 
             ax.set_xlabel("Date")
@@ -216,6 +218,51 @@ with tab5:
             ax.legend()
             plt.xticks(rotation=45)
             st.pyplot(fig)
+
+            # Run the LSTM prediction function
+            lstm_predictions = lstm_crypto_forecast(data, days)
+
+            # Plot LSTM predictions and actual data
+            st.subheader("LSTM Predicted Prices with Historical Data")
+            fig_lstm, ax_lstm = plt.subplots()
+
+            # Plot historical close prices
+            ax_lstm.plot(
+                data.index, data["close"], label="Historical Close Prices", color="blue"
+            )
+
+            # Plot LSTM predictions
+            ax_lstm.plot(
+                lstm_predictions["Date"],
+                lstm_predictions["Predicted Price"],
+                label="LSTM Predicted Price",
+                color="green",
+                marker="o",
+                markersize=3,
+            )
+
+            ax_lstm.set_xlabel("Date")
+            ax_lstm.set_ylabel("Price (USD)")
+            ax_lstm.set_title(
+                f"LSTM Predicted Prices with Historical Data ({days} Days)"
+            )
+            ax_lstm.legend()
+            plt.xticks(rotation=90)
+            st.pyplot(fig_lstm)
+
+            # Calculate the daily change
+            lstm_predictions["Daily Change"] = lstm_predictions[
+                "Predicted Price"
+            ].diff()
+
+            # Optionally, calculate the percentage change (uncomment if needed)
+            lstm_predictions["Daily % Change"] = (
+                lstm_predictions["Predicted Price"].pct_change() * 100
+            )
+
+            # Display the LSTM predictions in a table
+            st.subheader("LSTM Predicted Prices with Daily Change")
+            st.dataframe(lstm_predictions)
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
