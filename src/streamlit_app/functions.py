@@ -19,7 +19,7 @@ from tensorflow.keras.models import Sequential
 def run_ohlc_prediction(data, days):
     """
     Processes OHLC data and predicts future prices using linear regression,
-    with enhanced feature engineering including time-derived features.
+    with enhanced feature engineering, seasonal decomposition, and evaluation.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -44,15 +44,30 @@ def run_ohlc_prediction(data, days):
     data["timestamp"] = data["time"].apply(lambda x: x.timestamp())
     data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
     data["moving_avg_10"] = data["close"].rolling(window=10, min_periods=1).mean()
-    data["daily_return"] = data["close"].pct_change()  # Daily percentage return
+    data["daily_return"] = data["close"].pct_change()
+
+    # Add seasonal decomposition components
+    if len(data) >= 730:
+        decomposition = seasonal_decompose(data["close"], model="additive", period=365)
+        data["trend"] = decomposition.trend
+        data["seasonal"] = decomposition.seasonal
+        data["residual"] = decomposition.resid
+    else:
+        print("Not enough data for seasonal decomposition. Skipping this step.")
+        data["trend"] = 0
+        data["seasonal"] = 0
+        data["residual"] = 0
 
     # Time-Derived Features
     data["day_of_week"] = data["time"].dt.dayofweek
     data["month"] = data["time"].dt.month
     data["year"] = data["time"].dt.year
 
-    # Drop rows with NaN values from rolling calculations
+    # Drop rows with NaN values
     data = data.dropna()
+    if data.empty:
+        print("Not enough data for prediction after cleaning. Returning empty results.")
+        return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Prepare features and target variable
     X = data[
@@ -61,6 +76,8 @@ def run_ohlc_prediction(data, days):
             "moving_avg_5",
             "moving_avg_10",
             "daily_return",
+            "trend",
+            "seasonal",
             "day_of_week",
             "month",
             "year",
@@ -70,11 +87,25 @@ def run_ohlc_prediction(data, days):
 
     # Scale the data
     scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
+    try:
+        X_scaled = scaler.fit_transform(X)
+    except ValueError as e:
+        print(f"Scaling error: {e}")
+        return pd.DataFrame({"Date": [], "Predicted Price": []})
+
+    # Train-Test Split for Model Evaluation
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.2, random_state=42
+    )
 
     # Train linear regression model
     model = LinearRegression()
-    model.fit(X_scaled, y)
+    model.fit(X_train, y_train)
+
+    # Evaluate model
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f"Model Mean Squared Error: {mse:.4f}")
 
     # Predict future prices
     last_time = data["time"].iloc[-1]
@@ -87,6 +118,8 @@ def run_ohlc_prediction(data, days):
             "moving_avg_5": [data["moving_avg_5"].iloc[-1]] * days,
             "moving_avg_10": [data["moving_avg_10"].iloc[-1]] * days,
             "daily_return": [data["daily_return"].iloc[-1]] * days,
+            "trend": [data["trend"].iloc[-1]] * days,
+            "seasonal": [data["seasonal"].iloc[-1]] * days,
             "day_of_week": [d.dayofweek for d in future_dates],
             "month": [d.month for d in future_dates],
             "year": [d.year for d in future_dates],
