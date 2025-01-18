@@ -12,8 +12,9 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
 from statsmodels.tsa.seasonal import seasonal_decompose
+from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM, Dense
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model
 
 
 def run_ohlc_prediction(data, days):
@@ -183,7 +184,8 @@ def calculate_daily_average(data):
 
 def lstm_crypto_forecast(data, days):
     """
-    Predict future cryptocurrency prices using an LSTM model.
+    Predict future cryptocurrency prices using an LSTM model, with validation, early stopping,
+    time-derived features, and enhanced prediction handling.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -192,7 +194,6 @@ def lstm_crypto_forecast(data, days):
     Returns:
         pd.DataFrame: A DataFrame containing dates and predicted prices.
     """
-
     # Ensure required columns exist
     required_columns = ["time", "close"]
     if not all(col in data.columns for col in required_columns):
@@ -203,67 +204,101 @@ def lstm_crypto_forecast(data, days):
     data["time"] = pd.to_datetime(data["time"])
     data.set_index("time", inplace=True)
 
+    # Add time-derived features
+    data["day_of_week"] = data.index.dayofweek
+    data["month"] = data.index.month
+    data["lag_close"] = data["close"].shift(1)  # Lagged close price
+    data = data.dropna()
+
     # Scale the data
     scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(data[["close"]])
+    scaled_data = scaler.fit_transform(
+        data[["close", "day_of_week", "month", "lag_close"]]
+    )
 
     # Create sequences for LSTM
     def create_sequences(data, n_steps):
         X, y = [], []
         for i in range(n_steps, len(data)):
-            X.append(data[i - n_steps : i, 0])
-            y.append(data[i, 0])
+            X.append(data[i - n_steps : i])
+            y.append(data[i, 0])  # Predict "close" price
         return np.array(X), np.array(y)
 
-    n_steps = 30  # Use the last 30 days to predict the next day
+    n_steps = 30
     X, y = create_sequences(scaled_data, n_steps)
 
-    # Reshape for LSTM input
-    X = X.reshape((X.shape[0], X.shape[1], 1))
-
-    # Split into training and test sets
-    split = int(0.8 * len(X))
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
+    # Split into training, validation, and test sets
+    split_train = int(0.7 * len(X))
+    split_val = int(0.85 * len(X))
+    X_train, X_val, X_test = X[:split_train], X[split_train:split_val], X[split_val:]
+    y_train, y_val, y_test = y[:split_train], y[split_train:split_val], y[split_val:]
 
     # Build the LSTM model
     model = Sequential(
         [
-            LSTM(50, return_sequences=True, input_shape=(n_steps, 1)),
-            LSTM(50, return_sequences=False),
-            Dense(25),
+            LSTM(64, return_sequences=True, input_shape=(n_steps, X.shape[2])),
+            LSTM(64, return_sequences=False),
+            Dense(32),
             Dense(1),
         ]
     )
-
     model.compile(optimizer="adam", loss="mean_squared_error")
 
+    # Early stopping
+    early_stopping = EarlyStopping(
+        monitor="val_loss", patience=10, restore_best_weights=True
+    )
+
     # Train the model
-    model.fit(X_train, y_train, batch_size=32, epochs=100, verbose=1)
+    history = model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        batch_size=32,
+        epochs=100,
+        verbose=1,
+        callbacks=[early_stopping],
+    )
+
+    # Save the model
+    model.save("lstm_crypto_model.keras")
 
     # Predict future prices
     future_predictions = []
-    last_sequence = scaled_data[-n_steps:]
+    last_sequence = scaled_data[-n_steps:, :]  # Last sequence of features
     for _ in range(days):
-        # Reshape the last sequence for prediction
-        last_sequence_reshaped = last_sequence.reshape((1, n_steps, 1))
+        last_sequence_reshaped = last_sequence.reshape(
+            (1, n_steps, last_sequence.shape[1])
+        )
         next_prediction = model.predict(last_sequence_reshaped, verbose=0)
         future_predictions.append(next_prediction[0, 0])
 
-        # Update the last sequence
-        last_sequence = np.append(last_sequence[1:], [[next_prediction[0, 0]]], axis=0)
+        # Update the last_sequence
+        next_input = last_sequence[1:]  # Remove the first row (shift the sequence)
+        new_row = last_sequence[-1].copy()  # Copy the last row as a template
+        new_row[0] = next_prediction[
+            0, 0
+        ]  # Update the `close` feature with the prediction
+        last_sequence = np.vstack([next_input, new_row])  # Append the new row
 
     # Transform predictions back to the original scale
-    future_predictions = scaler.inverse_transform(
-        np.array(future_predictions).reshape(-1, 1)
+    future_predictions_expanded = np.zeros(
+        (len(future_predictions), scaled_data.shape[1])
     )
+    future_predictions_expanded[:, 0] = (
+        future_predictions  # Assign predictions to the `close` feature
+    )
+    future_predictions = scaler.inverse_transform(future_predictions_expanded)[
+        :, 0
+    ]  # Extract the `close` column
 
     # Generate future dates
     last_date = data.index[-1]
-    future_dates = [last_date + timedelta(days=i) for i in range(1, days + 1)]
+    future_dates = pd.date_range(last_date, periods=days + 1, freq="D")[1:]
 
     # Create a DataFrame for predictions
     predictions = pd.DataFrame(
         {"Date": future_dates, "Predicted Price": future_predictions.flatten()}
     )
+
     return predictions
