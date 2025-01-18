@@ -18,7 +18,8 @@ from tensorflow.keras.models import Sequential
 
 def run_ohlc_prediction(data, days):
     """
-    Processes OHLC data and predicts future prices using linear regression.
+    Processes OHLC data and predicts future prices using linear regression,
+    with enhanced feature engineering including time-derived features.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -41,17 +42,30 @@ def run_ohlc_prediction(data, days):
 
     # Feature Engineering
     data["timestamp"] = data["time"].apply(lambda x: x.timestamp())
-    data["moving_avg_5"] = (
-        data["close"].rolling(window=5, min_periods=1).mean()
-    )  # 5-period moving average
-    data["moving_avg_10"] = (
-        data["close"].rolling(window=10, min_periods=1).mean()
-    )  # 10-period moving average
+    data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
+    data["moving_avg_10"] = data["close"].rolling(window=10, min_periods=1).mean()
     data["daily_return"] = data["close"].pct_change()  # Daily percentage return
-    data = data.dropna()  # Drop rows with NaN values from rolling calculations
+
+    # Time-Derived Features
+    data["day_of_week"] = data["time"].dt.dayofweek
+    data["month"] = data["time"].dt.month
+    data["year"] = data["time"].dt.year
+
+    # Drop rows with NaN values from rolling calculations
+    data = data.dropna()
 
     # Prepare features and target variable
-    X = data[["timestamp", "moving_avg_5", "moving_avg_10", "daily_return"]]
+    X = data[
+        [
+            "timestamp",
+            "moving_avg_5",
+            "moving_avg_10",
+            "daily_return",
+            "day_of_week",
+            "month",
+            "year",
+        ]
+    ]
     y = data["close"]
 
     # Scale the data
@@ -73,6 +87,9 @@ def run_ohlc_prediction(data, days):
             "moving_avg_5": [data["moving_avg_5"].iloc[-1]] * days,
             "moving_avg_10": [data["moving_avg_10"].iloc[-1]] * days,
             "daily_return": [data["daily_return"].iloc[-1]] * days,
+            "day_of_week": [d.dayofweek for d in future_dates],
+            "month": [d.month for d in future_dates],
+            "year": [d.year for d in future_dates],
         }
     )
     future_scaled = scaler.transform(future_data)
