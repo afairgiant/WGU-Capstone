@@ -6,11 +6,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from data_downloader_2 import download_and_save_ohlc_data
 from functions import calculate_daily_average, lstm_crypto_forecast, run_ohlc_prediction
 from matplotlib import markers
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
+
+# Update data
+COIN_ID = "bitcoin"
+download_and_save_ohlc_data(COIN_ID, 30)
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 

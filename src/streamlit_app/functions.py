@@ -302,3 +302,47 @@ def lstm_crypto_forecast(data, days):
     )
 
     return predictions
+
+
+def calculate_moving_averages(file):
+    """
+    Processes a CSV file with columns 'time', 'open', 'high', 'low', 'close'.
+    Returns a DataFrame with moving averages calculated for the data.
+
+    Parameters:
+        file: str or file-like object
+            Path to the CSV file or file object.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing time, daily close, 7-day moving average, and 30-day moving average.
+    """
+    # Read the CSV file
+    df = pd.read_csv(file)
+
+    # Ensure required columns are present
+    required_columns = {"time", "open", "high", "low", "close"}
+    if not required_columns.issubset(df.columns):
+        raise ValueError(
+            f"The CSV file must contain the following columns: {required_columns}"
+        )
+
+    # Convert time column to datetime
+    df["time"] = pd.to_datetime(df["time"])
+
+    # Sort by time
+    df = df.sort_values(by="time").reset_index(drop=True)
+
+    # Calculate moving averages
+    df["7_day_MA"] = df["close"].rolling(window=7).mean()
+    df["30_day_MA"] = df["close"].rolling(window=30).mean()
+
+    # Prepare the result DataFrame
+    moving_averages = df[["time", "close", "7_day_MA", "30_day_MA"]]
+    moving_averages.columns = [
+        "Time",
+        "Closing Price",
+        "7-Day Moving Average",
+        "30-Day Moving Average",
+    ]
+
+    return moving_averages
