@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
+from statsmodels.tsa.seasonal import seasonal_decompose
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential
 
@@ -41,10 +42,10 @@ def run_ohlc_prediction(data, days):
     # Feature Engineering
     data["timestamp"] = data["time"].apply(lambda x: x.timestamp())
     data["moving_avg_5"] = (
-        data["close"].rolling(window=5).mean()
+        data["close"].rolling(window=5, min_periods=1).mean()
     )  # 5-period moving average
     data["moving_avg_10"] = (
-        data["close"].rolling(window=10).mean()
+        data["close"].rolling(window=10, min_periods=1).mean()
     )  # 10-period moving average
     data["daily_return"] = data["close"].pct_change()  # Daily percentage return
     data = data.dropna()  # Drop rows with NaN values from rolling calculations
@@ -142,12 +143,6 @@ def lstm_crypto_forecast(data, days):
         pd.DataFrame: A DataFrame containing dates and predicted prices.
     """
 
-    # Check for GPUs
-    #    print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
-
-    # List detected GPUs
-    #    print("GPUs: ", tf.config.list_physical_devices("GPU"))
-
     # Ensure required columns exist
     required_columns = ["time", "close"]
     if not all(col in data.columns for col in required_columns):
@@ -170,7 +165,7 @@ def lstm_crypto_forecast(data, days):
             y.append(data[i, 0])
         return np.array(X), np.array(y)
 
-    n_steps = 60  # Use the last 60 days to predict the next day
+    n_steps = 30  # Use the last 30 days to predict the next day
     X, y = create_sequences(scaled_data, n_steps)
 
     # Reshape for LSTM input
