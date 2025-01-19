@@ -65,9 +65,6 @@ def download_and_save_ohlc_data(
                 .sort_values("time")
             )
 
-            # Keep only the past 'days' days
-            updated_df = updated_df[updated_df["time"] >= start_date]
-
             # Save the updated data to the CSV file
             updated_df.to_csv(output_file, index=False)
             print(f"Data updated and saved successfully to {output_file}")

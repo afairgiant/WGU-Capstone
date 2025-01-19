@@ -7,13 +7,18 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from data_downloader_2 import download_and_save_ohlc_data
-from functions import calculate_daily_average, lstm_crypto_forecast, run_ohlc_prediction
+from functions import (
+    calculate_daily_average,
+    calculate_moving_averages,
+    lstm_crypto_forecast,
+    run_ohlc_prediction,
+)
 from matplotlib import markers
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 
-# Update data
+# Update any missing data from past 30 days.
 COIN_ID = "bitcoin"
 download_and_save_ohlc_data(COIN_ID, 30)
 
@@ -32,35 +37,52 @@ with tab1:
 
 # Tab 2: Charts
 with tab2:
+    # Path to the CSV file
+    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+
+    # Streamlit Tab for Historical Data
     st.title("Historical Data")
 
-    # File uploader
-    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+    try:
+        # Calculate moving averages
+        moving_averages = calculate_moving_averages(server_csv_path)
 
-    if uploaded_file:
-        # Read the CSV
-        data = pd.read_csv(uploaded_file, parse_dates=["timestamp"])
+        # Display the DataFrame
+        st.subheader("Processed Data")
+        st.dataframe(moving_averages)
 
-        # Display data
-        st.write("### Raw Data")
-        st.dataframe(data)
+        # Plot the data
+        st.subheader("Moving Averages Chart")
+        plt.figure(figsize=(10, 6))
+        plt.plot(
+            moving_averages["Time"],
+            moving_averages["Daily Average Price"],
+            label="Daily Average Price",
+            color="blue",
+        )
+        plt.plot(
+            moving_averages["Time"],
+            moving_averages["7-Day Moving Average"],
+            label="7-Day Moving Average",
+            color="orange",
+        )
+        plt.plot(
+            moving_averages["Time"],
+            moving_averages["30-Day Moving Average"],
+            label="30-Day Moving Average",
+            color="green",
+        )
+        plt.xlabel("Time")
+        plt.ylabel("Price")
+        plt.title("Daily Average and Moving Averages")
+        plt.legend(loc="upper left")  # Add legend to the chart
+        plt.grid(True)
 
-        # Chart for price and moving averages
-        st.write("### Price and Moving Averages Over Time")
-        st.line_chart(data.set_index("timestamp")[["price", "7d_ma", "30d_ma"]])
+        # Display the plot in Streamlit
+        st.pyplot(plt)
 
-        # Custom Matplotlib chart
-        st.write("### Custom Matplotlib Chart")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(data["timestamp"], data["price"], label="Price", color="blue")
-        ax.plot(data["timestamp"], data["7d_ma"], label="7-Day MA", color="orange")
-        ax.plot(data["timestamp"], data["30d_ma"], label="30-Day MA", color="green")
-        ax.set_title("Price and Moving Averages Over Time")
-        ax.set_xlabel("Timestamp")
-        ax.set_ylabel("Value")
-        ax.legend()
-        st.pyplot(fig)
-
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 # Tab 3: Futures
 with tab3:
     st.title("Bitcoin Price Prediction-Polynomial Regression")
