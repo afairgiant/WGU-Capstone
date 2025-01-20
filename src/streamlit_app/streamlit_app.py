@@ -11,6 +11,12 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from data_downloader_2 import download_and_save_ohlc_data
+from financial_functions import (
+    calculate_daily_average,
+    calculate_moving_averages,
+    lstm_crypto_forecast,
+    run_ohlc_prediction,
+)
 from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
@@ -21,13 +27,6 @@ from sentiment_functions import (
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
-
-from src.streamlit_app.financial_functions import (
-    calculate_daily_average,
-    calculate_moving_averages,
-    lstm_crypto_forecast,
-    run_ohlc_prediction,
-)
 
 # Update any missing data from past 30 days.
 COIN_ID = "bitcoin"
