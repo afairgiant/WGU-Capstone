@@ -84,7 +84,7 @@ with tab2:
             label="30-Day Moving Average",
             color="green",
         )
-        plt.xlabel("Time")
+        plt.xlabel("Date")
         plt.ylabel("Price")
         plt.title("Daily Average and Moving Averages")
         plt.legend(loc="upper left")  # Add legend to the chart
@@ -153,7 +153,7 @@ with tab3:
             ax.set_ylabel("Price (USD)")
             ax.set_title(f"Predicted Prices and Daily Averages ({days} Days)")
             ax.legend()
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=90)
             st.pyplot(fig)
 
             # Run the LSTM prediction function

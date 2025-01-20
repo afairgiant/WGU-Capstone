@@ -159,7 +159,7 @@ def is_cache_valid(cache_file, max_age_hours):
     """
     if os.path.exists(cache_file):
         file_age = time.time() - os.path.getmtime(cache_file)
-        return file_age <= max_age_hours * 3600
+        return file_age <= max_age_hours * 1
     return False
 
 
@@ -169,11 +169,9 @@ def process_news_sentiment(
     language="en",
     page_size=10,
     max_pages=1,
-    cache_file="news_sentiment_cache.csv",
-    max_age_hours=6,
 ):
     """
-    Fetch news and perform sentiment analysis on each article. Use cache if available and valid.
+    Fetch news and perform sentiment analysis on each article.
 
     Parameters:
         api_key (str): Your NewsAPI key.
@@ -181,18 +179,10 @@ def process_news_sentiment(
         language (str): Language of the articles (default: "en").
         page_size (int): Number of articles to fetch per request (default: 10).
         max_pages (int): Number of pages to fetch (default: 1).
-        cache_file (str): Path to the cache file (default: "news_sentiment_cache.csv").
-        max_age_hours (int): Maximum age of the cache in hours (default: 6).
 
     Returns:
         pd.DataFrame: DataFrame containing article details and sentiment scores.
     """
-    if is_cache_valid(cache_file, max_age_hours):
-        print("Loading data from cache...")
-        cached_data = load_sentiment_data(cache_file)
-        if cached_data is not None:
-            return cached_data
-
     print("Fetching fresh data...")
     articles = fetch_news(api_key, query, max_pages, language, page_size)
     if not articles:
@@ -220,18 +210,12 @@ def process_news_sentiment(
     # Ensure 'published_at' exists and convert to datetime
     df["published_at"] = pd.to_datetime(df["published_at"], errors="coerce")
 
-    # Log valid and invalid rows
-    valid_rows = df["published_at"].notna().sum()
-    invalid_rows = len(df) - valid_rows
-    print(f"Valid 'published_at' rows: {valid_rows}, Invalid rows: {invalid_rows}")
-
     # Drop rows without valid timestamps
     df = df.dropna(subset=["published_at"])
 
     if df.empty:
         raise ValueError("No valid articles with 'published_at' timestamps available.")
 
-    save_sentiment_data(df, cache_file)
     return df
 
 
