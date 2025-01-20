@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #vis.vega-embed {
+      width: 100%;
+      display: flex;
+    }
+
+    #vis.vega-embed details,
+    #vis.vega-embed details summary {
+      position: relative;
+    }
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5.20.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    (function(vegaEmbed) {
+      var spec = {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300}}, "data": {"name": "data-3d4b1f027220fd11de8ee5e8136b8962"}, "mark": {"type": "line"}, "encoding": {"tooltip": [{"field": "title", "type": "nominal"}, {"field": "sentiment_compound", "type": "quantitative"}], "x": {"field": "published_at", "type": "temporal"}, "y": {"field": "sentiment_compound", "type": "quantitative"}}, "title": "Sentiment Compound Score Over Time", "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json", "datasets": {"data-3d4b1f027220fd11de8ee5e8136b8962": [{"title": "The First Bitcoin President? Tracing Trump\u2019s Crypto Connections", "description": "Crypto execs funneled millions in donations to swing this election, and now their man is in charge. Here\u2019s how Donald Trump\u2019s \u201ccrypto cabinet\u201d could shape the next four years.", "url": "https://www.wired.com/story/mapping-donald-trump-crypto-connections/", "published_at": "2025-01-16T11:00:00+00:00", "sentiment_neg": 0.0, "sentiment_neu": 0.962, "sentiment_pos": 0.038, "sentiment_compound": 0.0258}, {"title": "Policy Proposal for Trump\u2019s Bitcoin Stockpile Leaks", "description": "The main argument seems to be \"China.\"", "url": "https://gizmodo.com/policy-proposal-for-trumps-bitcoin-stockpile-leaks-2000551372", "published_at": "2025-01-16T21:05:53+00:00", "sentiment_neg": 0.294, "sentiment_neu": 0.706, "sentiment_pos": 0.0, "sentiment_compound": -0.3612}, {"title": "Judge Ends One Man's 11-Year Quest to Recover $765 Million in Bitcoin by Digging Up a Landfill", "description": "A UK judge ruled against James Howells, who has been trying to get a hard drive with private keys to a cryptocurrency fortune out of a landfill for over a decade.", "url": "https://www.wired.com/story/bitcoin-landfill-excavation-james-howells-judge-ruling/", "published_at": "2025-01-13T20:25:06+00:00", "sentiment_neg": 0.045, "sentiment_neu": 0.955, "sentiment_pos": 0.0, "sentiment_compound": -0.1027}, {"title": "El Salvador Strikes $1.4 Billion IMF Deal After Scaling Back Bitcoin Policies", "description": "El Salvador secured a $1.4 billion loan deal with the IMF after agreeing to scale back its bitcoin policies, making cryptocurrency acceptance voluntary for businesses and limiting public sector involvement. The deal aims to stabilize the country's economy, wi\u2026", "url": "https://slashdot.org/story/24/12/24/2015221/el-salvador-strikes-14-billion-imf-deal-after-scaling-back-bitcoin-policies", "published_at": "2024-12-24T22:40:00+00:00", "sentiment_neg": 0.0, "sentiment_neu": 0.816, "sentiment_pos": 0.184, "sentiment_compound": 0.7964}, {"title": "MicroStrategy's Big Bet On Bitcoin Went Stratospheric", "description": "MicroStrategy has transformed into a \"bitcoin treasury company,\" investing billions in bitcoin through debt and equity issuance, driving its stock price up nearly 400% in 2024 despite declining software revenues and heightened financial risks. The Guardian re\u2026", "url": "https://slashdot.org/story/24/12/31/204219/microstrategys-big-bet-on-bitcoin-went-stratospheric", "published_at": "2024-12-31T21:45:00+00:00", "sentiment_neg": 0.114, "sentiment_neu": 0.842, "sentiment_pos": 0.045, "sentiment_compound": -0.4215}, {"title": "Is this Bitcoin's golden moment? These are 3 key things to watch for cryptos in 2025", "description": "Could 2025 be another game changing year for Bitcoin and other cryptocurrencies? Here are the three things to watch in the new year.", "url": "https://www.npr.org/2025/01/06/nx-s1-5248284/bitcoin-rally-crypto-trump", "published_at": "2025-01-06T10:00:00+00:00", "sentiment_neg": 0.0, "sentiment_neu": 1.0, "sentiment_pos": 0.0, "sentiment_compound": 0.0}, {"title": "[Removed]", "description": "[Removed]", "url": "https://removed.com", "published_at": "2025-01-10T13:45:14+00:00", "sentiment_neg": 0.0, "sentiment_neu": 1.0, "sentiment_pos": 0.0, "sentiment_compound": 0.0}, {"title": "North Korea linked to crypto heists of over $650 million in 2024 alone", "description": "A joint report from US, Japan, and South Korea suggests North Korean hackers known as Lazarus Group were behind the $235 million crypto heist of Indian exchange WazirX.", "url": "https://www.theverge.com/2025/1/14/24343762/north-korea-crypto-stolen-wazirx-lazarus-group", "published_at": "2025-01-14T20:54:03+00:00", "sentiment_neg": 0.0, "sentiment_neu": 1.0, "sentiment_pos": 0.0, "sentiment_compound": 0.0}, {"title": "Coinbase Launches Bitcoin-Backed Loan Service Allowing Users to Borrow Up to $100,000 in USDC", "description": "Coinbase, in partnership with Morpho Labs, has launched a Bitcoin-backed loan service, allowing U.S. users to borrow up to $100,000 in USD Coin (USDC) using ...", "url": "https://finance.yahoo.com/news/coinbase-launches-bitcoin-backed-loan-074833223.html", "published_at": "2025-01-17T07:48:33+00:00", "sentiment_neg": 0.0, "sentiment_neu": 0.943, "sentiment_pos": 0.057, "sentiment_compound": 0.128}, {"title": "AI Startup Anthropic Raising Funding Valuing it at $60 Billion", "description": "Anthropic is in advanced talks to raise $2 billion dollars in a deal that would value it at $60 billion, making it the latest artificial-intelligence startup to seize upon investor euphoria for the technology. WSJ: The funding round is being led by the ventur\u2026", "url": "https://slashdot.org/story/25/01/07/1820244/ai-startup-anthropic-raising-funding-valuing-it-at-60-billion", "published_at": "2025-01-07T18:20:00+00:00", "sentiment_neg": 0.0, "sentiment_neu": 0.825, "sentiment_pos": 0.175, "sentiment_compound": 0.8271}]}};
+      var embedOpt = {"mode": "vega-lite"};
+
+      function showError(el, error){
+          el.innerHTML = ('<div style="color:red;">'
+                          + '<p>JavaScript Error: ' + error.message + '</p>'
+                          + "<p>This usually means there's a typo in your chart specification. "
+                          + "See the javascript console for the full traceback.</p>"
+                          + '</div>');
+          throw error;
+      }
+      const el = document.getElementById('vis');
+      vegaEmbed("#vis", spec, embedOpt)
+        .catch(error => showError(el, error));
+    })(vegaEmbed);
+
+  </script>
+</body>
+</html>
