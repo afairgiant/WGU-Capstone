@@ -349,3 +349,47 @@ def calculate_moving_averages(file):
     ]
 
     return moving_averages
+
+
+def analyze_prices_by_day(file):
+    """
+    Analyzes whether the price typically goes up or down on each day of the week.
+
+    Parameters:
+        file: str or file-like object
+            Path to the CSV file or file object.
+
+    Returns:
+        pd.Series: A Series containing the average daily price change for each day of the week.
+    """
+    # Read the CSV file
+    df = pd.read_csv(file)
+
+    # Ensure required columns are present
+    required_columns = {"time", "open", "high", "low", "close"}
+    if not required_columns.issubset(df.columns):
+        raise ValueError(
+            f"The CSV file must contain the following columns: {required_columns}"
+        )
+
+    # Convert time column to datetime
+    df["time"] = pd.to_datetime(df["time"])
+
+    # Sort by time to ensure proper calculation of changes
+    df = df.sort_values(by="time").reset_index(drop=True)
+
+    # Calculate daily price change (close - open)
+    df["daily_change"] = df["close"] - df["open"]
+
+    # Extract day of the week
+    df["day_of_week"] = df["time"].dt.day_name()
+
+    # Group by day of the week and calculate the average daily change
+    day_avg_change = df.groupby("day_of_week")["daily_change"].mean()
+
+    # Ensure the order of days is correct
+    day_avg_change = day_avg_change.reindex(
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    )
+
+    return day_avg_change

@@ -14,6 +14,7 @@ import pandas as pd
 import streamlit as st
 from data_downloader_2 import download_and_save_ohlc_data
 from financial_functions import (
+    analyze_prices_by_day,
     calculate_daily_average,
     calculate_moving_averages,
     lstm_crypto_forecast,
@@ -91,6 +92,21 @@ with tab2:
         plt.grid(True)
 
         # Display the plot in Streamlit
+        st.pyplot(plt)
+        # New: Calculate and display average prices by day of the week
+        st.subheader("Average Prices by Day of the Week")
+        day_avg = analyze_prices_by_day(server_csv_path)
+
+        # Plot the new chart
+        plt.figure(figsize=(10, 6))
+        day_avg.plot(kind="bar", color="skyblue", edgecolor="black")
+        plt.title("Average Prices by Day of the Week", fontsize=16)
+        plt.xlabel("Day of the Week", fontsize=12)
+        plt.ylabel("Average Price", fontsize=12)
+        plt.xticks(rotation=45, fontsize=10)
+        plt.tight_layout()
+
+        # Display the new plot in Streamlit
         st.pyplot(plt)
 
     except Exception as e:
