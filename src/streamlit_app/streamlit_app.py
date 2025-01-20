@@ -2,6 +2,8 @@ import os
 import sys
 from http import server
 
+from utils import load_api_key
+
 # Add the project root directory to Python's search path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 print("Current working directory:", os.getcwd())
@@ -218,7 +220,8 @@ with tab5:
     st.title("Testing")
     st.write("This is a test tab to try new things.")
     # User inputs
-    NEWS_API_KEY = st.text_input("Enter your NewsAPI Key:", type="password")
+    # NEWS_API_KEY = st.text_input("Enter your NewsAPI Key:", type="password")
+    NEWS_API_KEY = load_api_key("configs/api_keys.json", "apiKey_newsapi")
     QUERY = st.text_input("Enter the keyword to search for:", value="Bitcoin")
 
     if st.button("Run Sentiment Analysis"):
