@@ -33,7 +33,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 # Update any missing data from past 30 days.
 COIN_ID = "bitcoin"
-#download_and_save_ohlc_data(COIN_ID, 30)
+# download_and_save_ohlc_data(COIN_ID, 30)
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
@@ -161,7 +161,7 @@ with tab3:
                 predictions["Predicted Price"],
                 label="Predicted Price",
                 color="red",
-                marker="o",1
+                marker="o",
                 markersize=4,
             )
 
