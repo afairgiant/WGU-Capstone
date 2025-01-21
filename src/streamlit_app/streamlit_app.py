@@ -33,7 +33,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 # Update any missing data from past 30 days.
 COIN_ID = "bitcoin"
-# download_and_save_ohlc_data(COIN_ID, 30)
+download_and_save_ohlc_data(COIN_ID, 30)
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
@@ -126,99 +126,103 @@ with tab3:
         max_value=365,
         value=30,
     )
+    # Button to trigger predictions
+    if st.button("Run Price Prediction"):
+        if server_csv_path is not None:
+            try:
+                # Read the uploaded file as a DataFrame
+                data = pd.read_csv(server_csv_path)
 
-    if server_csv_path is not None:
-        try:
-            # Read the uploaded file as a DataFrame
-            data = pd.read_csv(server_csv_path)
+                # Calculate the daily averages
+                daily_averages = calculate_daily_average(data)
 
-            # Calculate the daily averages
-            daily_averages = calculate_daily_average(data)
+                # Run the prediction function
+                predictions = run_ohlc_prediction(data, days)
 
-            # Run the prediction function
-            predictions = run_ohlc_prediction(data, days)
+                # Display the predictions in a table
+                st.subheader("Predicted Prices")
+                st.dataframe(predictions)
 
-            # Display the predictions in a table
-            st.subheader("Predicted Prices")
-            st.dataframe(predictions)
+                # Plot the predictions and daily averages
+                st.subheader(f"Price Predictions and Daily Averages ({days} Days)")
+                fig, ax = plt.subplots()
 
-            # Plot the predictions and daily averages
-            st.subheader(f"Price Predictions and Daily Averages ({days} Days)")
-            fig, ax = plt.subplots()
+                # Plot daily averages
+                ax.plot(
+                    daily_averages["Date"],
+                    daily_averages["Average Price"],
+                    label="Daily Average",
+                    color="blue",
+                    marker="o",
+                )
 
-            # Plot daily averages
-            ax.plot(
-                daily_averages["Date"],
-                daily_averages["Average Price"],
-                label="Daily Average",
-                color="blue",
-                marker="o",
-            )
+                # Plot predictions
+                ax.plot(
+                    predictions["Date"],
+                    predictions["Predicted Price"],
+                    label="Predicted Price",
+                    color="red",
+                    marker="o",
+                    markersize=4,
+                )
 
-            # Plot predictions
-            ax.plot(
-                predictions["Date"],
-                predictions["Predicted Price"],
-                label="Predicted Price",
-                color="red",
-                marker="o",
-                markersize=4,
-            )
+                ax.set_xlabel("Date")
+                ax.set_ylabel("Price (USD)")
+                ax.set_title(f"Predicted Prices and Daily Averages ({days} Days)")
+                ax.legend()
+                plt.xticks(rotation=90)
+                st.pyplot(fig)
 
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Price (USD)")
-            ax.set_title(f"Predicted Prices and Daily Averages ({days} Days)")
-            ax.legend()
-            plt.xticks(rotation=90)
-            st.pyplot(fig)
+                # Run the LSTM prediction function
+                lstm_predictions = lstm_crypto_forecast(data, days)
 
-            # Run the LSTM prediction function
-            lstm_predictions = lstm_crypto_forecast(data, days)
+                # Plot LSTM predictions and actual data
+                st.subheader("LSTM Predicted Prices with Historical Data")
+                fig_lstm, ax_lstm = plt.subplots()
 
-            # Plot LSTM predictions and actual data
-            st.subheader("LSTM Predicted Prices with Historical Data")
-            fig_lstm, ax_lstm = plt.subplots()
+                # Plot historical close prices
+                ax_lstm.plot(
+                    data.index,
+                    data["close"],
+                    label="Historical Close Prices",
+                    color="blue",
+                )
 
-            # Plot historical close prices
-            ax_lstm.plot(
-                data.index, data["close"], label="Historical Close Prices", color="blue"
-            )
+                # Plot LSTM predictions
+                ax_lstm.plot(
+                    lstm_predictions["Date"],
+                    lstm_predictions["Predicted Price"],
+                    label="LSTM Predicted Price",
+                    color="green",
+                    marker="o",
+                    markersize=3,
+                )
 
-            # Plot LSTM predictions
-            ax_lstm.plot(
-                lstm_predictions["Date"],
-                lstm_predictions["Predicted Price"],
-                label="LSTM Predicted Price",
-                color="green",
-                marker="o",
-                markersize=3,
-            )
+                ax_lstm.set_xlabel("Date")
+                ax_lstm.set_ylabel("Price (USD)")
+                ax_lstm.set_title(
+                    f"LSTM Predicted Prices with Historical Data ({days} Days)"
+                )
+                ax_lstm.legend()
+                plt.xticks(rotation=90)
+                st.pyplot(fig_lstm)
 
-            ax_lstm.set_xlabel("Date")
-            ax_lstm.set_ylabel("Price (USD)")
-            ax_lstm.set_title(
-                f"LSTM Predicted Prices with Historical Data ({days} Days)"
-            )
-            ax_lstm.legend()
-            plt.xticks(rotation=90)
-            st.pyplot(fig_lstm)
+                # Calculate the daily change
+                lstm_predictions["Daily Change"] = lstm_predictions[
+                    "Predicted Price"
+                ].diff()
 
-            # Calculate the daily change
-            lstm_predictions["Daily Change"] = lstm_predictions[
-                "Predicted Price"
-            ].diff()
+                # Optionally, calculate the percentage change (uncomment if needed)
+                lstm_predictions["Daily % Change"] = (
+                    lstm_predictions["Predicted Price"].pct_change() * 100
+                )
 
-            # Optionally, calculate the percentage change (uncomment if needed)
-            lstm_predictions["Daily % Change"] = (
-                lstm_predictions["Predicted Price"].pct_change() * 100
-            )
+                # Display the LSTM predictions in a table
+                st.subheader("LSTM Predicted Prices with Daily Change")
+                st.dataframe(lstm_predictions)
 
-            # Display the LSTM predictions in a table
-            st.subheader("LSTM Predicted Prices with Daily Change")
-            st.dataframe(lstm_predictions)
-
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
 # Tab 4: About
 with tab4:
