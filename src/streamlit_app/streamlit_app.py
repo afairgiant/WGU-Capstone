@@ -39,7 +39,7 @@ st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
 # Create tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Home", "Historical Charts", "LSTM Prediction", "About", "Sentiment Analysis"]
+    ["Home", "Historical Charts", "LSTM Prediction", "Sentiment Analysis", "About"]
 )
 
 # Tab 1: Home
@@ -226,19 +226,9 @@ with tab3:
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
-# Tab 4: About
-with tab4:
-    st.title("About This App")
-    st.write(
-        """
-        This application demonstrates how to use tabs in Streamlit to display
-        multiple views. Use the "Charts" tab to upload your CSV and visualize
-        the data.
-        """
-    )
 
-# Tab 5: Testing
-with tab5:
+# Tab 4: Sentiment Analysis
+with tab4:
     st.title("Sentiment Analysis of News Articles")
     st.write(
         "This analysis uses the NewsAPI to fetch news articles and analyze public sentiment."
@@ -277,3 +267,14 @@ with tab5:
                 st.error(f"An error occurred: {e}")
         else:
             st.warning("Please provide both the API key and a keyword.")
+
+# Tab 5: About
+with tab5:
+    st.title("About This App")
+    st.write(
+        """
+        This application demonstrates how to use tabs in Streamlit to display
+        multiple views. Use the "Charts" tab to upload your CSV and visualize
+        the data.
+        """
+    )
