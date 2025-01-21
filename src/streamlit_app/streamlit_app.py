@@ -55,7 +55,7 @@ with tab2:
 
     # Streamlit Tab for Historical Data
     st.title("Historical Data")
-
+    st.write("This tab is used to visualize historical data for bitcoin.")
     try:
         # Calculate moving averages
         moving_averages = calculate_moving_averages(server_csv_path)
@@ -115,7 +115,9 @@ with tab2:
 # Tab 3: Futures
 with tab3:
     st.title("Bitcoin Price Prediction")
-
+    st.write(
+        "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
+    )
     # Path to the CSV file
     server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
 
