@@ -39,7 +39,7 @@ st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
 # Create tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Home", "Historical Charts", "LSTM Prediction", "About", "Testing"]
+    ["Home", "Historical Charts", "LSTM Prediction", "About", "Sentiment Analysis"]
 )
 
 # Tab 1: Home
@@ -237,8 +237,10 @@ with tab4:
 
 # Tab 5: Testing
 with tab5:
-    st.title("Testing")
-    st.write("This is a test tab to try new things.")
+    st.title("Sentiment Analysis of News Articles")
+    st.write(
+        "This analysis uses the NewsAPI to fetch news articles and analyze public sentiment."
+    )
     # User inputs
     # NEWS_API_KEY = st.text_input("Enter your NewsAPI Key:", type="password")
     NEWS_API_KEY = load_api_key("configs/api_keys.json", "apiKey_newsapi")
