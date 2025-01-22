@@ -170,6 +170,77 @@ def download_and_append_ohlc_data(
         raise
 
 
+def fetch_historical_data(
+    coin_id,
+    currency="usd",
+    start_date="2024-02-01",
+    end_date="2024-12-12",
+    output_file="src/streamlit_app/data/historical_data.csv",
+):
+    """
+    Fetches historical cryptocurrency data from CoinGecko API for training purposes.
+
+    Args:
+        coin_id (str): The cryptocurrency ID (e.g., 'bitcoin').
+        currency (str): The fiat currency (default is 'usd').
+        start_date (str): Start date in 'YYYY-MM-DD' format (default is 30 days ago).
+        end_date (str): End date in 'YYYY-MM-DD' format (default is today).
+        output_file (str): The path to save the historical data as a CSV.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the historical data.
+    """
+    try:
+        # Default start and end dates
+        if end_date is None:
+            end_date = datetime.utcnow().strftime("%Y-%m-%d")
+        if start_date is None:
+            start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+
+        # Validate date format
+        datetime.strptime(start_date, "%Y-%m-%d")
+        datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Fetch historical data from CoinGecko API
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart/range"
+        start_timestamp = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_timestamp = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
+
+        params = {
+            "vs_currency": currency,
+            "from": start_timestamp,
+            "to": end_timestamp,
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+
+        # Process API response
+        data = response.json()
+        prices = data.get("prices", [])
+        market_caps = data.get("market_caps", [])
+        total_volumes = data.get("total_volumes", [])
+
+        # Combine the data into a DataFrame
+        df = pd.DataFrame(prices, columns=["timestamp", "price"])
+        df["market_cap"] = [mc[1] for mc in market_caps]
+        df["volume"] = [vol[1] for vol in total_volumes]
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(output_file, index=False)
+        print(f"Historical data saved successfully to {output_file}")
+
+        return df
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+        raise
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+
+
 # Example usage
 if __name__ == "__main__":
     # Parameters
@@ -180,5 +251,8 @@ if __name__ == "__main__":
     OUTPUT_FILE_2 = "src/streamlit_app/data/ohlc_data_training.csv"
 
     # Download, clean, and save data
-    download_and_save_ohlc_data(COIN_ID, DAYS, OUTPUT_FILE)
+    # download_and_save_ohlc_data(COIN_ID, DAYS, OUTPUT_FILE)
     # download_and_append_ohlc_data(COIN_ID, OUTPUT_FILE_2)
+    fetch_historical_data(
+        COIN_ID, output_file="src/streamlit_app/data/historical_data.csv"
+    )
