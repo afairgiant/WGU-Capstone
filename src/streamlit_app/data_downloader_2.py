@@ -10,21 +10,38 @@ API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K"
 
 
 def download_and_save_ohlc_data(
-    coin_id, days, output_file="src/streamlit_app/data/ohlc_data.csv"
+    coin_id,
+    days,
+    output_file="src/streamlit_app/data/ohlc_data.csv",
+    metadata_file="src/streamlit_app/data/ohlc_last_download.txt",
 ):
     """
     Downloads OHLC data for a cryptocurrency from the CoinGecko API, appends missing data to the CSV,
-    and ensures only the last 'days' days are retained.
+    and ensures only the last 'days' days are retained. Skips download if last fetch was within 6 hours.
 
     Args:
         coin_id (str): The cryptocurrency ID (e.g., 'bitcoin').
         days (int): Number of days of historical data to retrieve.
         output_file (str): The path to the CSV file where data will be saved.
+        metadata_file (str): Path to the file storing the last download timestamp.
 
     Returns:
         str: The path to the updated CSV file.
     """
     try:
+        # Check the last download time
+        if os.path.exists(metadata_file):
+            with open(metadata_file, "r") as file:
+                last_download_str = file.read().strip()
+            last_download_time = datetime.strptime(
+                last_download_str, "%Y-%m-%d %H:%M:%S"
+            )
+            elapsed_time = datetime.utcnow() - last_download_time
+
+            if elapsed_time < timedelta(hours=6):
+                print(f"Data was last downloaded {elapsed_time} ago. Skipping fetch.")
+                return output_file
+
         # Determine the date range for the past 'days' days
         today = datetime.utcnow()
         start_date = today - timedelta(days=days)
@@ -68,6 +85,10 @@ def download_and_save_ohlc_data(
             # Save the updated data to the CSV file
             updated_df.to_csv(output_file, index=False)
             print(f"Data updated and saved successfully to {output_file}")
+
+            # Update the last download timestamp
+            with open(metadata_file, "w") as file:
+                file.write(datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
         else:
             print("No missing data to fetch. CSV file is already up-to-date.")
 
