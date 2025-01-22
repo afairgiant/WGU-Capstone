@@ -31,7 +31,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 
-# Update any missing data from past 30 days.
+# Update any missing data from past 30 days at program start.
 COIN_ID = "bitcoin"
 download_and_save_ohlc_data(COIN_ID, 30)
 
@@ -114,6 +114,7 @@ with tab2:
 
 # Tab 3: Futures
 with tab3:
+
     st.title("Bitcoin Price Prediction")
     st.write(
         "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
@@ -132,6 +133,9 @@ with tab3:
     if st.button("Run Price Prediction"):
         if server_csv_path is not None:
             try:
+                # Update any missing data from past 30 days before future predictions.
+                download_and_save_ohlc_data(COIN_ID, 30)
+
                 # Read the uploaded file as a DataFrame
                 data = pd.read_csv(server_csv_path)
 
