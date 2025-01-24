@@ -200,7 +200,7 @@ def lstm_crypto_forecast(data, days):
         missing_cols = [col for col in required_columns if col not in data.columns]
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
-    # Convert time column to datetime
+    # Convert time column to datetime and set as index
     data["time"] = pd.to_datetime(data["time"])
     data.set_index("time", inplace=True)
 
@@ -226,6 +226,9 @@ def lstm_crypto_forecast(data, days):
 
     n_steps = 30
     X, y = create_sequences(scaled_data, n_steps)
+
+    if len(X) == 0:  # Handle edge case for small datasets
+        raise ValueError("Not enough data to create sequences for LSTM.")
 
     # Split into training, validation, and test sets
     split_train = int(0.7 * len(X))
