@@ -1,9 +1,11 @@
 import os
+import re
 import time
 from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
+from matplotlib.pylab import f
 from pyparsing import C
 from utils import load_api_key
 
@@ -236,6 +238,59 @@ def fetch_max_ohlc_data(
         raise
 
 
+def download_blockchain_metrics(api_key_path, key_name, output_file):
+    """
+    Download blockchain metrics for Bitcoin from the CoinGecko API.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing Bitcoin blockchain metrics.
+    """
+    api_key_path = "configs/api_keys.json"
+    api_key = load_api_key(api_key_path, key_name)
+    if not api_key:
+        raise ValueError("API key is missing. Please check your configuration.")
+
+    url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
+    params = {
+        "vs_currency": "usd",
+        "days": "365",  # Retrieve data for the last 365 days
+        "interval": "daily",
+        "precision": "full",
+    }
+    headers = {"accept": "application/json", "x-cg-demo-api-key": api_key}
+
+    try:
+        response = requests.get(url, params=params, headers=headers)
+        response.raise_for_status()  # Raise an error for unsuccessful responses
+        data = response.json()
+
+        # Extract relevant data
+        prices = data.get("prices", [])
+        market_caps = data.get("market_caps", [])
+        total_volumes = data.get("total_volumes", [])
+
+        # Process API Response
+        market_data = response.json()
+        if not market_data:
+            raise ValueError("No market data returned by the API.")
+
+        # Convert to DataFrame
+        df = pd.DataFrame(
+            {
+                "time": [pd.to_datetime(price[0], unit="ms") for price in prices],
+                "price": [price[1] for price in prices],
+                "market_cap": [cap[1] for cap in market_caps],
+                "total_volume": [vol[1] for vol in total_volumes],
+            }
+        )
+        # Save the DataFrame to a CSV File
+        df.to_csv(output_file, index=False)
+        print(f"Bitcoin metrics saved successfully to {output_file}")
+        return df
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Failed to fetch Bitcoin metrics: {e}")
+
+
 # Example usage
 if __name__ == "__main__":
     # Parameters
@@ -244,8 +299,12 @@ if __name__ == "__main__":
 
     OUTPUT_FILE = "src/streamlit_app/data/ohlc_data.csv"
     OUTPUT_FILE_2 = "src/streamlit_app/data/ohlc_data_training.csv"
-
+    OUTPUT_FILE_3 = "src/streamlit_app/data/market_metrics_data.csv"
     # Download, clean, and save data
     # download_and_save_ohlc_data(COIN_ID, DAYS, OUTPUT_FILE)
     # download_and_append_ohlc_data(COIN_ID, OUTPUT_FILE_2)
-    fetch_max_ohlc_data(COIN_ID)
+    # fetch_max_ohlc_data(COIN_ID)
+    bitcoin_metrics = download_blockchain_metrics(
+        "configs/api_keys.json", "apiKey_gecko", OUTPUT_FILE_3
+    )
+    print(bitcoin_metrics.head())
