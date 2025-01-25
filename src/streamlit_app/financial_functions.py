@@ -184,8 +184,7 @@ def calculate_daily_average(data):
 
 def lstm_crypto_forecast(data, days):
     """
-    Predict future cryptocurrency prices using an LSTM model, with validation, early stopping,
-    time-derived features, and enhanced prediction handling.
+    Predict future cryptocurrency prices using an LSTM model.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -200,14 +199,14 @@ def lstm_crypto_forecast(data, days):
         missing_cols = [col for col in required_columns if col not in data.columns]
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
-    # Convert time column to datetime
+    # Preprocess data
     data["time"] = pd.to_datetime(data["time"])
     data.set_index("time", inplace=True)
 
     # Add time-derived features
     data["day_of_week"] = data.index.dayofweek
     data["month"] = data.index.month
-    data["lag_close"] = data["close"].shift(1)  # Lagged close price
+    data["lag_close"] = data["close"].shift(1)
     data = data.dropna()
 
     # Scale the data
@@ -233,64 +232,13 @@ def lstm_crypto_forecast(data, days):
     X_train, X_val, X_test = X[:split_train], X[split_train:split_val], X[split_val:]
     y_train, y_val, y_test = y[:split_train], y[split_train:split_val], y[split_val:]
 
-    # Build the LSTM model
-    model = Sequential(
-        [
-            LSTM(64, return_sequences=True, input_shape=(n_steps, X.shape[2])),
-            LSTM(64, return_sequences=False),
-            Dense(32),
-            Dense(1),
-        ]
-    )
-    model.compile(optimizer="adam", loss="mean_squared_error")
-
-    # Early stopping
-    early_stopping = EarlyStopping(
-        monitor="val_loss", patience=10, restore_best_weights=True
-    )
-
     # Train the model
-    history = model.fit(
-        X_train,
-        y_train,
-        validation_data=(X_val, y_val),
-        batch_size=32,
-        epochs=100,
-        verbose=1,
-        callbacks=[early_stopping],
-    )
-
-    # Save the model
-    model.save("lstm_crypto_model.keras")
+    model = train_lstm_model(X_train, y_train, X_val, y_val, n_steps, X.shape[2])
 
     # Predict future prices
-    future_predictions = []
-    last_sequence = scaled_data[-n_steps:, :]  # Last sequence of features
-    for _ in range(days):
-        last_sequence_reshaped = last_sequence.reshape(
-            (1, n_steps, last_sequence.shape[1])
-        )
-        next_prediction = model.predict(last_sequence_reshaped, verbose=0)
-        future_predictions.append(next_prediction[0, 0])
-
-        # Update the last_sequence
-        next_input = last_sequence[1:]  # Remove the first row (shift the sequence)
-        new_row = last_sequence[-1].copy()  # Copy the last row as a template
-        new_row[0] = next_prediction[
-            0, 0
-        ]  # Update the `close` feature with the prediction
-        last_sequence = np.vstack([next_input, new_row])  # Append the new row
-
-    # Transform predictions back to the original scale
-    future_predictions_expanded = np.zeros(
-        (len(future_predictions), scaled_data.shape[1])
+    future_predictions = predict_future_prices(
+        model, scaled_data, scaler, n_steps, days
     )
-    future_predictions_expanded[:, 0] = (
-        future_predictions  # Assign predictions to the `close` feature
-    )
-    future_predictions = scaler.inverse_transform(future_predictions_expanded)[
-        :, 0
-    ]  # Extract the `close` column
 
     # Generate future dates
     last_date = data.index[-1]
@@ -302,6 +250,87 @@ def lstm_crypto_forecast(data, days):
     )
 
     return predictions
+
+
+def train_lstm_model(X_train, y_train, X_val, y_val, n_steps, n_features):
+    """
+    Train an LSTM model with the given data.
+
+    Args:
+        X_train (np.ndarray): Training feature sequences.
+        y_train (np.ndarray): Training target values.
+        X_val (np.ndarray): Validation feature sequences.
+        y_val (np.ndarray): Validation target values.
+        n_steps (int): Number of time steps in the input sequence.
+        n_features (int): Number of features per time step.
+
+    Returns:
+        keras.Model: Trained LSTM model.
+    """
+    model = Sequential(
+        [
+            LSTM(64, return_sequences=True, input_shape=(n_steps, n_features)),
+            LSTM(64, return_sequences=False),
+            Dense(32),
+            Dense(1),
+        ]
+    )
+    model.compile(optimizer="adam", loss="mean_squared_error")
+
+    early_stopping = EarlyStopping(
+        monitor="val_loss", patience=10, restore_best_weights=True
+    )
+
+    model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        batch_size=32,
+        epochs=100,
+        verbose=1,
+        callbacks=[early_stopping],
+    )
+
+    model.save("lstm_crypto_model.keras")
+    return model
+
+
+def predict_future_prices(model, scaled_data, scaler, n_steps, days):
+    """
+    Predict future prices using a trained LSTM model.
+
+    Args:
+        model (keras.Model): Trained LSTM model.
+        scaled_data (np.ndarray): Scaled data array.
+        scaler (MinMaxScaler): Fitted scaler for inverse transformation.
+        n_steps (int): Number of time steps in the input sequence.
+        days (int): Number of future days to predict.
+
+    Returns:
+        np.ndarray: Array of predicted prices.
+    """
+    future_predictions = []
+    last_sequence = scaled_data[-n_steps:, :]
+    for _ in range(days):
+        last_sequence_reshaped = last_sequence.reshape(
+            (1, n_steps, last_sequence.shape[1])
+        )
+        next_prediction = model.predict(last_sequence_reshaped, verbose=0)
+        future_predictions.append(next_prediction[0, 0])
+
+        # Update the last_sequence
+        next_input = last_sequence[1:]
+        new_row = last_sequence[-1].copy()
+        new_row[0] = next_prediction[0, 0]
+        last_sequence = np.vstack([next_input, new_row])
+
+    future_predictions_expanded = np.zeros(
+        (len(future_predictions), scaled_data.shape[1])
+    )
+    future_predictions_expanded[:, 0] = future_predictions
+    future_predictions = scaler.inverse_transform(future_predictions_expanded)[:, 0]
+
+    return future_predictions
 
 
 def calculate_moving_averages(file):
