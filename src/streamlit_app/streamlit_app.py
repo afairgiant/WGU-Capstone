@@ -13,13 +13,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from data_downloader_2 import download_ohlc_data
-from financial_functions import (
-    analyze_prices_by_day,
-    calculate_daily_average,
-    calculate_moving_averages,
-    lstm_crypto_forecast,
-    run_ohlc_prediction,
-)
 from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
@@ -30,6 +23,14 @@ from sentiment_functions import (
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
+
+from src.streamlit_app.ohlc_functions import (
+    analyze_prices_by_day,
+    calculate_daily_average,
+    calculate_moving_averages,
+    lstm_crypto_forecast,
+    run_ohlc_prediction,
+)
 
 # Update any missing data from past 30 days at program start.
 COIN_ID = "bitcoin"
@@ -184,7 +185,7 @@ with tab3:
                 lstm_predictions = lstm_crypto_forecast(data, days)
 
                 # Plot LSTM predictions and actual data
-                st.subheader("LSTM Predicted Prices with Historical Data")
+                st.subheader("LSTM Predicted Prices with Daily Price Historical Data")
                 fig_lstm, ax_lstm = plt.subplots()
 
                 # Plot historical close prices
@@ -238,8 +239,7 @@ with tab4:
     st.write(
         "This analysis uses the NewsAPI to fetch news articles and analyze public sentiment."
     )
-    # User inputs
-    # NEWS_API_KEY = st.text_input("Enter your NewsAPI Key:", type="password")
+
     NEWS_API_KEY = load_api_key("configs/api_keys.json", "apiKey_newsapi")
     QUERY = st.text_input("Enter the keyword to search for:", value="Bitcoin")
 
