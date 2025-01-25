@@ -76,7 +76,19 @@ def download_ohlc_data(
 
 
 # Download blockchain metrics
-def download_blockchain_metrics(api_key_path, key_name, output_file):
+def download_blockchain_metrics(
+    api_key_path,
+    key_name,
+    output_file,
+    metadata_file="src/streamlit_app/data/market_last_download.txt",
+):
+    if os.path.exists(metadata_file):
+        with open(metadata_file, "r") as file:
+            last_download = datetime.strptime(file.read().strip(), "%Y-%m-%d %H:%M:%S")
+            if datetime.utcnow() - last_download < timedelta(hours=6):
+                print("Data recently fetched. Skipping download.")
+                return output_file
+
     api_key = load_api_key(api_key_path, key_name)
     if not api_key:
         raise ValueError("Missing API key. Check your configuration.")
@@ -103,7 +115,9 @@ def download_blockchain_metrics(api_key_path, key_name, output_file):
         }
     )
     save_dataframe_to_csv(df, output_file)
-    return df
+    update_metadata(metadata_file)
+    # return df
+    return output_file
 
 
 # Example usage
@@ -122,4 +136,3 @@ if __name__ == "__main__":
     bitcoin_metrics = download_blockchain_metrics(
         "configs/api_keys.json", "apiKey_gecko", OUTPUT_FILE_3
     )
-    print(bitcoin_metrics.head())
