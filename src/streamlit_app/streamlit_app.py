@@ -160,6 +160,7 @@ with tab3:
                     label="Daily Average",
                     color="blue",
                     marker="o",
+                    markersize=2,
                 )
 
                 # Plot predictions
