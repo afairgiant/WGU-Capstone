@@ -238,6 +238,10 @@ def fetch_max_ohlc_data(
         raise
 
 
+def fetch_blockchain_metrics():
+    pass
+
+
 # Example usage
 if __name__ == "__main__":
     # Parameters

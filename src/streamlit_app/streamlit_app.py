@@ -18,6 +18,7 @@ from financial_functions import (
     calculate_daily_average,
     calculate_moving_averages,
     lstm_crypto_forecast,
+    plot_correlation_heatmap,
     run_ohlc_prediction,
 )
 from matplotlib import markers
@@ -111,6 +112,48 @@ with tab2:
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
+
+    st.subheader("Correlation Heatmap")
+    st.write(
+        """
+        This correlation heatmap provides insights into the relationships between different numerical features in the cryptocurrency dataset, 
+        such as prices, volume, and moving averages. Strong correlations (above 0.8 or below -0.8) are highlighted, as they indicate variables 
+        that move together (positively or negatively).
+
+        - **What this means for you**: Use this heatmap to identify key drivers of cryptocurrency price changes. For example:
+            - A strong positive correlation between a moving average and the closing price suggests that trends in the moving average 
+            could help predict future price movements.
+            - A strong negative correlation might highlight features that behave inversely, offering insights into market dynamics.
+        
+        - **How to use this**: Focus on features that show significant correlations with the target variable (e.g., 'close' or 'price'). 
+        These features are likely to be the most predictive and can be prioritized for your machine learning models or trading strategies.
+    """
+    )
+
+    try:
+        # Read the dataset from the predefined path
+        data = pd.read_csv(server_csv_path)
+
+        # Allow users to select a target column for highlighting correlations
+        target_column = st.selectbox(
+            "Select a target column for analysis (optional)",
+            ["None"] + list(data.columns),
+        )
+        if target_column == "None":
+            target_column = None
+
+        # Generate the heatmap figure
+        heatmap_fig = plot_correlation_heatmap(data, target_column=target_column)
+
+        # Display the heatmap
+        st.pyplot(heatmap_fig)
+
+    except FileNotFoundError:
+        st.error(
+            f"File not found: {server_csv_path}. Please ensure the dataset exists at this location."
+        )
+    except Exception as e:
+        st.error(f"Error generating heatmap: {e}")
 
 # Tab 3: Futures
 with tab3:

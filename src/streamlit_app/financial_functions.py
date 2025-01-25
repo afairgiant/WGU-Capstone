@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
+import seaborn as sns
 import streamlit as st
 import tensorflow as tf
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
+from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
 from statsmodels.tsa.seasonal import seasonal_decompose
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM, Dense
@@ -396,3 +397,79 @@ def analyze_prices_by_day(file):
     )
 
     return day_avg_change
+
+
+def plot_correlation_heatmap(data, target_column=None, highlight_threshold=0.8):
+    """
+    Generate and display a correlation heatmap with scaling, annotation, and optional highlighting.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing numerical columns.
+        target_column (str, optional): Highlight correlations with this target column.
+        highlight_threshold (float): Threshold for highlighting strong correlations.
+
+    Returns:
+        matplotlib.figure.Figure: The heatmap figure.
+    """
+    # Select numeric data only
+    numeric_data = data.select_dtypes(include=["number"])
+
+    # Ensure there are enough numeric columns
+    if numeric_data.empty or numeric_data.shape[1] < 2:
+        raise ValueError("Not enough numerical data to generate a heatmap.")
+
+    # Scale the numeric data for consistency
+    scaler = StandardScaler()
+    scaled_data = pd.DataFrame(
+        scaler.fit_transform(numeric_data), columns=numeric_data.columns
+    )
+
+    # Calculate correlation matrix
+    correlation_matrix = scaled_data.corr()
+
+    # Highlight strong correlations
+    if target_column and target_column in correlation_matrix.columns:
+        target_corr = correlation_matrix[target_column].sort_values(ascending=False)
+        strong_corrs = target_corr[
+            (target_corr >= highlight_threshold) | (target_corr <= -highlight_threshold)
+        ]
+        print(f"Strong correlations with {target_column}:\n{strong_corrs}")
+
+    # Create the figure
+    fig, ax = plt.subplots(figsize=(12, 10))
+    sns.heatmap(
+        correlation_matrix,
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        linewidths=0.5,
+        cbar_kws={"label": "Correlation Coefficient"},
+        ax=ax,
+    )
+
+    # Add title and labels
+    ax.set_title("Feature Correlation Heatmap", fontsize=16)
+    ax.set_xlabel("Features", fontsize=12)
+    ax.set_ylabel("Features", fontsize=12)
+    plt.xticks(rotation=45, fontsize=10)
+    plt.yticks(fontsize=10)
+
+    # Optionally annotate specific correlations
+    if target_column:
+        for i, column in enumerate(correlation_matrix.columns):
+            if (
+                correlation_matrix.loc[target_column, column] >= highlight_threshold
+                or correlation_matrix.loc[target_column, column] <= -highlight_threshold
+            ):
+                ax.text(
+                    i + 0.5,  # X-coordinate (column index)
+                    correlation_matrix.columns.get_loc(target_column) + 0.5,  # Y-index
+                    f"{correlation_matrix.loc[target_column, column]:.2f}",
+                    color="black",
+                    ha="center",
+                    va="center",
+                    fontsize=10,
+                    bbox=dict(facecolor="yellow", alpha=0.5),
+                )
+
+    return fig
