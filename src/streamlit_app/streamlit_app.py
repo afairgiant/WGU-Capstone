@@ -17,9 +17,13 @@ from financial_functions import (
     analyze_prices_by_day,
     calculate_daily_average,
     calculate_moving_averages,
+    evaluate_linear_regression_model,
+    evaluate_lstm_model,
+    evaluate_model,
     lstm_crypto_forecast,
     plot_correlation_heatmap,
     run_ohlc_prediction,
+    train_lstm_model,
 )
 from matplotlib import markers
 from sentiment_functions import (
@@ -48,6 +52,49 @@ with tab1:
     st.title("Welcome to the App")
     st.write("This is the home page. Use the tabs above to navigate.")
 
+    # # Load data
+    # server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    # data = pd.read_csv(server_csv_path)
+    # # Run linear regression predictions and get metrics
+    # predictions, metrics = run_ohlc_prediction(data, 30)
+
+    # # Display Metrics and Predictions for Linear Regression
+    # st.subheader("Linear Regression Model Evaluation Metrics")
+    # st.write(f"Mean Absolute Error (MAE): {metrics['MAE']:.2f}")
+    # st.write(f"Root Mean Squared Error (RMSE): {metrics['RMSE']:.2f}")
+    # st.write(f"R-squared (R²): {metrics['R²']:.2f}")
+    # st.subheader("Predicted Prices")
+    # st.dataframe(predictions)
+
+    # # Run LSTM predictions and get metrics
+    # lstm_predictions, metrics = lstm_crypto_forecast(data, 30)
+
+    # # Debugging: Check structure and type
+    # print("Type of lstm_predictions:", type(lstm_predictions))
+    # print("Content of lstm_predictions:", lstm_predictions)
+
+    # # Convert lstm_predictions to a DataFrame
+    # if isinstance(lstm_predictions, dict):
+    #     lstm_predictions = pd.DataFrame(lstm_predictions)
+
+    # # Ensure proper formatting
+    # lstm_predictions["Date"] = pd.to_datetime(lstm_predictions["Date"], errors="coerce")
+    # lstm_predictions["Predicted Price"] = pd.to_numeric(
+    #     lstm_predictions["Predicted Price"], errors="coerce"
+    # )
+
+    # # Drop rows with invalid data
+    # lstm_predictions = lstm_predictions.dropna()
+
+    # # Display metrics
+    # st.subheader("LSTM Model Evaluation Metrics")
+    # st.write(f"Mean Absolute Error (MAE): {metrics['MAE']:.2f}")
+    # st.write(f"Root Mean Squared Error (RMSE): {metrics['RMSE']:.2f}")
+    # st.write(f"R-squared (R²): {metrics['R²']:.2f}")
+
+    # # Display predictions
+    # st.subheader("LSTM Predicted Prices")
+    # st.dataframe(lstm_predictions)
 
 # Tab 2: Charts
 with tab2:
@@ -160,7 +207,7 @@ with tab3:
 
     st.title("Bitcoin Price Prediction")
     st.write(
-        "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
+        "This tab is used to predict future prices of bitcoin using linear regression and an LSTM prediction model."
     )
     # Path to the CSV file
     server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
@@ -186,50 +233,70 @@ with tab3:
                 daily_averages = calculate_daily_average(data)
 
                 # Run the prediction function
-                predictions = run_ohlc_prediction(data, days)
+                # Predict future prices using Linear Regression
+                linear_predictions = run_ohlc_prediction(data, days)
 
-                # Display the predictions in a table
-                st.subheader("Predicted Prices")
-                st.dataframe(predictions)
+                # Evaluate the Linear Regression model
+                linear_metrics = evaluate_linear_regression_model(data)
 
-                # Plot the predictions and daily averages
-                st.subheader(f"Price Predictions and Daily Averages ({days} Days)")
-                fig, ax = plt.subplots()
+                # Plot Linear Regression predictions
+                st.subheader("Linear Regression Predicted Prices")
+                fig_lr, ax_lr = plt.subplots()
 
-                # Plot daily averages
-                ax.plot(
-                    daily_averages["Date"],
-                    daily_averages["Average Price"],
-                    label="Daily Average",
+                # Plot historical close prices
+                ax_lr.plot(
+                    data["time"],
+                    data["close"],
+                    label="Historical Close Prices",
                     color="blue",
-                    marker="o",
                 )
 
-                # Plot predictions
-                ax.plot(
-                    predictions["Date"],
-                    predictions["Predicted Price"],
-                    label="Predicted Price",
+                # Plot linear regression predictions
+                ax_lr.plot(
+                    linear_predictions["Date"],
+                    linear_predictions["Predicted Price"],
+                    label="Linear Regression Predicted Price",
                     color="red",
                     marker="o",
-                    markersize=4,
+                    markersize=3,
                 )
 
-                ax.set_xlabel("Date")
-                ax.set_ylabel("Price (USD)")
-                ax.set_title(f"Predicted Prices and Daily Averages ({days} Days)")
-                ax.legend()
+                ax_lr.set_xlabel("Date")
+                ax_lr.set_ylabel("Price (USD)")
+                ax_lr.set_title(f"Linear Regression Predicted Prices ({days} Days)")
+                ax_lr.legend()
                 plt.xticks(rotation=90)
-                st.pyplot(fig)
+                st.pyplot(fig_lr)
 
-                # Run the LSTM prediction function
-                lstm_predictions = lstm_crypto_forecast(data, days)
+                # Display Linear Regression metrics
+                st.subheader("Linear Regression Model Performance Metrics")
+                st.write(f"Mean Absolute Error (MAE): {linear_metrics['MAE']:.2f}")
+                st.write(
+                    f"Root Mean Squared Error (RMSE): {linear_metrics['RMSE']:.2f}"
+                )
+                st.write(f"R-squared (R²): {linear_metrics['R²']:.2f}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+            try:
+                # Train the LSTM model
+                model, scaler, X_test, y_test = train_lstm_model(data)
+                print("getting past training data")
+                # Predict future prices
+                lstm_predictions = lstm_crypto_forecast(model, scaler, data, days)
+                print("getting past predictions")
+                # Evaluate the model
+                lstm_metrics = evaluate_model(y_test, model.predict(X_test).flatten())
 
-                # Plot LSTM predictions and actual data
+                # Plot LSTM predictions
                 st.subheader("LSTM Predicted Prices with Historical Data")
                 fig_lstm, ax_lstm = plt.subplots()
 
-                # Plot historical close prices
+                # Sort the index
+                if not data.index.is_monotonic_increasing:
+                    data = data.sort_index()
+                    st.write("Sorted the index.")
+
+                # Plot historical data
                 ax_lstm.plot(
                     data.index,
                     data["close"],
@@ -239,7 +306,7 @@ with tab3:
 
                 # Plot LSTM predictions
                 ax_lstm.plot(
-                    lstm_predictions["Date"],
+                    lstm_predictions["Date"],  # Use 'Date' column instead of 'time'
                     lstm_predictions["Predicted Price"],
                     label="LSTM Predicted Price",
                     color="green",
@@ -249,30 +316,23 @@ with tab3:
 
                 ax_lstm.set_xlabel("Date")
                 ax_lstm.set_ylabel("Price (USD)")
-                ax_lstm.set_title(
-                    f"LSTM Predicted Prices with Historical Data ({days} Days)"
-                )
+                ax_lstm.set_title("LSTM Predicted Prices with Historical Data")
                 ax_lstm.legend()
                 plt.xticks(rotation=90)
                 st.pyplot(fig_lstm)
 
-                # Calculate the daily change
-                lstm_predictions["Daily Change"] = lstm_predictions[
-                    "Predicted Price"
-                ].diff()
-
-                # Optionally, calculate the percentage change (uncomment if needed)
-                lstm_predictions["Daily % Change"] = (
-                    lstm_predictions["Predicted Price"].pct_change() * 100
-                )
-
-                # Display the LSTM predictions in a table
-                st.subheader("LSTM Predicted Prices with Daily Change")
+                # Display predictions
+                st.subheader("LSTM Predicted Prices")
                 st.dataframe(lstm_predictions)
+
+                # Display evaluation metrics
+                st.subheader("LSTM Model Performance Metrics")
+                st.write(f"Mean Absolute Error (MAE): {lstm_metrics['MAE']:.2f}")
+                st.write(f"Root Mean Squared Error (RMSE): {lstm_metrics['RMSE']:.2f}")
+                st.write(f"R-squared (R²): {lstm_metrics['R²']:.2f}")
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
-
 
 # Tab 4: Sentiment Analysis
 with tab4:
