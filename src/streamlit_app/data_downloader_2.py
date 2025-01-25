@@ -7,8 +7,6 @@ import requests
 from pyparsing import C
 from utils import load_api_key
 
-API_KEY = "CG-jMJRBmwSsWizV5LXEExWkn9K"
-
 
 def download_and_save_ohlc_data(
     coin_id,
