@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_downloader_2 import download_and_save_ohlc_data
+from data_downloader_2 import download_ohlc_data
 from financial_functions import (
     analyze_prices_by_day,
     calculate_daily_average,
@@ -33,7 +33,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 # Update any missing data from past 30 days at program start.
 COIN_ID = "bitcoin"
-download_and_save_ohlc_data(COIN_ID, 30)
+download_ohlc_data(COIN_ID, 30)
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
@@ -134,7 +134,7 @@ with tab3:
         if server_csv_path is not None:
             try:
                 # Update any missing data from past 30 days before future predictions.
-                download_and_save_ohlc_data(COIN_ID, 30)
+                download_ohlc_data(COIN_ID, 30)
 
                 # Read the uploaded file as a DataFrame
                 data = pd.read_csv(server_csv_path)
