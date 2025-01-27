@@ -112,22 +112,36 @@ def save_sentiment_data(df, save_file):
 
     Parameters:
         df (pd.DataFrame): DataFrame containing new sentiment data.
-        save_file (str): Path to the cache file.
+        save_file (str): Path to the save file.
     """
+    print(f"Saving sentiment data to {save_file}...")
     if os.path.exists(save_file):
-        # Load existing data
-        existing_df = pd.read_csv(save_file)
+        print("Save file exists. Loading existing data...")
+        try:
+            # Load existing data
+            existing_df = pd.read_csv(save_file)
+            print(f"Loaded {len(existing_df)} rows from save file.")
+        except Exception as e:
+            print(f"Error loading save file: {e}")
+            existing_df = pd.DataFrame()
+
         # Combine new and existing data
         combined_df = pd.concat([existing_df, df])
-        # Remove duplicates based on unique columns (e.g., 'title' and 'url')
+        print(f"Combining data. Total rows before deduplication: {len(combined_df)}")
+
+        # Remove duplicates
         combined_df = combined_df.drop_duplicates(subset=["title", "url"])
+        print(f"Total rows after deduplication: {len(combined_df)}")
     else:
-        # If cache doesn't exist, use the new data
+        print("No save file found. Creating new save file.")
         combined_df = df
 
-    # Save the updated data to the cache file
-    combined_df.to_csv(save_file, index=False)
-    print(f"Saved {len(df)} new rows. Total rows in cache: {len(combined_df)}.")
+    # Save the updated data to the save file
+    try:
+        combined_df.to_csv(save_file, index=False)
+        print(f"Data saved successfully. Total rows in save file: {len(combined_df)}")
+    except Exception as e:
+        print(f"Error saving data to save file: {e}")
 
 
 def load_sentiment_data(save_file):
@@ -135,7 +149,7 @@ def load_sentiment_data(save_file):
     Load sentiment data from a CSV file.
 
     Parameters:
-        save_file (str): Path to the cache file.
+        save_file (str): Path to the save file.
 
     Returns:
         pd.DataFrame: Loaded DataFrame or an empty DataFrame if the file doesn't exist.
@@ -144,7 +158,7 @@ def load_sentiment_data(save_file):
         try:
             return pd.read_csv(save_file)
         except pd.errors.EmptyDataError:
-            print("Cache file is empty.")
+            print("Save file is empty.")
             return pd.DataFrame()
     return pd.DataFrame()
 
@@ -197,18 +211,18 @@ def process_news_sentiment(api_key, query, language="en", page_size=10, max_page
 def process_and_save_sentiment(
     api_key,
     query,
-    save_file="src/streamlit_app/data/sentiment_data.csv",
+    save_file="sentiment_data.csv",
     language="en",
     page_size=10,
     max_pages=1,
 ):
     """
-    Fetch news, perform sentiment analysis, and update the cache with new results.
+    Fetch news, perform sentiment analysis, and update the save file with new results.
 
     Parameters:
         api_key (str): Your NewsAPI key.
         query (str): Query for the news search (e.g., "Bitcoin").
-        save_file (str): Path to the cache file for storing sentiment data.
+        save_file (str): Path to the save file for storing sentiment data.
         language (str): Language of the articles (default: "en").
         page_size (int): Number of articles to fetch per request (default: 10).
         max_pages (int): Number of pages to fetch (default: 1).
@@ -216,7 +230,7 @@ def process_and_save_sentiment(
     Returns:
         pd.DataFrame: Updated DataFrame with all sentiment data.
     """
-    saved_data = load_sentiment_data(save_file)
+    cached_data = load_sentiment_data(save_file)
     new_data = process_news_sentiment(api_key, query, language, page_size, max_pages)
     save_sentiment_data(new_data, save_file)
     return load_sentiment_data(save_file)
@@ -297,25 +311,13 @@ def generate_word_cloud(df):
     return fig
 
 
-# Example usage
 if __name__ == "__main__":
     NEWS_API_KEY = "d6fd5c5f1f6d423eaf6ba10dd1f197ac"
     QUERY = "Bitcoin"
-    MAX_PAGES = 2
-    # Fetch news and analyze sentiment with caching
-    sentiment_df = process_news_sentiment(NEWS_API_KEY, QUERY, MAX_PAGES)
+    SAVE_FILE = "src/streamlit_app/data/sentiment_data.csv"
 
-    # Plot sentiment over time
-    line_chart = plot_sentiment_over_time(sentiment_df)
-    line_chart.save("sentiment_over_time.html")
-    print("Saved 'sentiment_over_time.html' for viewing.")
+    updated_sentiment_df = process_and_save_sentiment(
+        NEWS_API_KEY, QUERY, save_file=SAVE_FILE
+    )
 
-    # Plot sentiment distribution
-    bar_chart = plot_sentiment_distribution(sentiment_df)
-    bar_chart.save("sentiment_distribution.html")
-    print("Saved 'sentiment_distribution.html' for viewing.")
-
-    # Generate and display word cloud
-    word_cloud_fig = generate_word_cloud(sentiment_df)
-    word_cloud_fig.savefig("word_cloud.png")
-    print("Saved 'word_cloud.png' for viewing.")
+    print(updated_sentiment_df.head())
