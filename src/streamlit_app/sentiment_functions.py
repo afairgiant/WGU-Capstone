@@ -57,9 +57,6 @@ def fetch_news(api_key, query, max_pages=1, language="en", page_size=100):
 
                 if response.status_code == 200:
                     response_json = response.json()
-                    print(
-                        f"Raw response: {response_json}"
-                    )  # Log full response for debugging
                     articles = response_json.get("articles", [])
                     if not articles:
                         print(f"No articles found on page {page}.")
@@ -92,9 +89,6 @@ def fetch_news(api_key, query, max_pages=1, language="en", page_size=100):
                     raise
 
     print(f"Total articles fetched: {len(all_articles)}")
-    if all_articles:
-        print(f"Sample article: {all_articles[0]}")
-
     return all_articles
 
 
@@ -112,64 +106,50 @@ def analyze_sentiment_vader(text):
     return analyzer.polarity_scores(text)
 
 
-def save_sentiment_data(df, cache_file):
+def save_sentiment_data(df, save_file):
     """
-    Save sentiment data to a CSV file.
+    Save or update sentiment data in a CSV file, ensuring no duplicates.
 
     Parameters:
-        df (pd.DataFrame): DataFrame containing sentiment data.
-        cache_file (str): Path to the cache file.
+        df (pd.DataFrame): DataFrame containing new sentiment data.
+        save_file (str): Path to the cache file.
     """
-    df.to_csv(cache_file, index=False)
+    if os.path.exists(save_file):
+        # Load existing data
+        existing_df = pd.read_csv(save_file)
+        # Combine new and existing data
+        combined_df = pd.concat([existing_df, df])
+        # Remove duplicates based on unique columns (e.g., 'title' and 'url')
+        combined_df = combined_df.drop_duplicates(subset=["title", "url"])
+    else:
+        # If cache doesn't exist, use the new data
+        combined_df = df
+
+    # Save the updated data to the cache file
+    combined_df.to_csv(save_file, index=False)
+    print(f"Saved {len(df)} new rows. Total rows in cache: {len(combined_df)}.")
 
 
-def load_sentiment_data(cache_file):
+def load_sentiment_data(save_file):
     """
     Load sentiment data from a CSV file.
 
     Parameters:
-        cache_file (str): Path to the cache file.
+        save_file (str): Path to the cache file.
 
     Returns:
-        pd.DataFrame: Loaded DataFrame or None if the file is empty.
+        pd.DataFrame: Loaded DataFrame or an empty DataFrame if the file doesn't exist.
     """
-    if os.path.exists(cache_file):
+    if os.path.exists(save_file):
         try:
-            df = pd.read_csv(cache_file)
-            if df.empty:
-                print("Cache file is empty.")
-                return None
-            return df
+            return pd.read_csv(save_file)
         except pd.errors.EmptyDataError:
-            print("Cache file is empty or invalid.")
-            return None
-    return None
+            print("Cache file is empty.")
+            return pd.DataFrame()
+    return pd.DataFrame()
 
 
-def is_cache_valid(cache_file, max_age_hours):
-    """
-    Check if the cache file is still valid.
-
-    Parameters:
-        cache_file (str): Path to the cache file.
-        max_age_hours (int): Maximum age of the cache in hours.
-
-    Returns:
-        bool: True if the cache is valid, False otherwise.
-    """
-    if os.path.exists(cache_file):
-        file_age = time.time() - os.path.getmtime(cache_file)
-        return file_age <= max_age_hours * 1
-    return False
-
-
-def process_news_sentiment(
-    api_key,
-    query,
-    language="en",
-    page_size=10,
-    max_pages=1,
-):
+def process_news_sentiment(api_key, query, language="en", page_size=10, max_pages=1):
     """
     Fetch news and perform sentiment analysis on each article.
 
@@ -204,19 +184,42 @@ def process_news_sentiment(
             }
         )
 
-    # Create DataFrame
     df = pd.DataFrame(results)
-
-    # Ensure 'published_at' exists and convert to datetime
     df["published_at"] = pd.to_datetime(df["published_at"], errors="coerce")
-
-    # Drop rows without valid timestamps
     df = df.dropna(subset=["published_at"])
 
     if df.empty:
         raise ValueError("No valid articles with 'published_at' timestamps available.")
 
     return df
+
+
+def process_and_save_sentiment(
+    api_key,
+    query,
+    save_file="src/streamlit_app/data/sentiment_data.csv",
+    language="en",
+    page_size=10,
+    max_pages=1,
+):
+    """
+    Fetch news, perform sentiment analysis, and update the cache with new results.
+
+    Parameters:
+        api_key (str): Your NewsAPI key.
+        query (str): Query for the news search (e.g., "Bitcoin").
+        save_file (str): Path to the cache file for storing sentiment data.
+        language (str): Language of the articles (default: "en").
+        page_size (int): Number of articles to fetch per request (default: 10).
+        max_pages (int): Number of pages to fetch (default: 1).
+
+    Returns:
+        pd.DataFrame: Updated DataFrame with all sentiment data.
+    """
+    saved_data = load_sentiment_data(save_file)
+    new_data = process_news_sentiment(api_key, query, language, page_size, max_pages)
+    save_sentiment_data(new_data, save_file)
+    return load_sentiment_data(save_file)
 
 
 def plot_sentiment_over_time(df):
