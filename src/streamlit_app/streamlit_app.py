@@ -134,7 +134,7 @@ with tab3:
         if server_csv_path is not None:
             try:
                 # Update any missing data from past 30 days before future predictions.
-                download_and_save_ohlc_data(COIN_ID, 30)
+                download_ohlc_data(COIN_ID, 30)
 
                 # Read the uploaded file as a DataFrame
                 data = pd.read_csv(server_csv_path)
