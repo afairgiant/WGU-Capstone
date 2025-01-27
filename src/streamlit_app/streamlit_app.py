@@ -51,14 +51,14 @@ with tab1:
 # Tab 2: Charts
 with tab2:
     # Path to the CSV file
-    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    ohlc_server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
 
     # Streamlit Tab for Historical Data
     st.title("Historical Data")
     st.write("This tab is used to visualize historical data for bitcoin.")
     try:
         # Calculate moving averages
-        moving_averages = calculate_moving_averages(server_csv_path)
+        moving_averages = calculate_moving_averages(ohlc_server_csv_path)
 
         # Display the DataFrame
         st.subheader("Processed Data")
@@ -95,7 +95,7 @@ with tab2:
         st.pyplot(plt)
         # New: Calculate and display average prices by day of the week
         st.subheader("Average Prices by Day of the Week")
-        day_avg = analyze_prices_by_day(server_csv_path)
+        day_avg = analyze_prices_by_day(ohlc_server_csv_path)
 
         # Plot the new chart
         plt.figure(figsize=(10, 6))
@@ -120,7 +120,7 @@ with tab3:
         "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
     )
     # Path to the CSV file
-    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    ohlc_server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
 
     # Number of days for predictions
     days = st.number_input(
@@ -131,13 +131,13 @@ with tab3:
     )
     # Button to trigger predictions
     if st.button("Run Price Prediction"):
-        if server_csv_path is not None:
+        if ohlc_server_csv_path is not None:
             try:
                 # Update any missing data from past 30 days before future predictions.
                 download_ohlc_data(COIN_ID, 30)
 
                 # Read the uploaded file as a DataFrame
-                data = pd.read_csv(server_csv_path)
+                data = pd.read_csv(ohlc_server_csv_path)
 
                 # Calculate the daily averages
                 daily_averages = calculate_daily_average(data)
