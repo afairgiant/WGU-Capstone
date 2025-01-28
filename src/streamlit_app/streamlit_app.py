@@ -2,6 +2,7 @@ import os
 import sys
 from http import server
 
+import plotly.graph_objects as go
 from utils import load_api_key
 
 # Add the project root directory to Python's search path
@@ -49,7 +50,7 @@ with tab1:
     st.write("This is the home page. Use the tabs above to navigate.")
 
 
-# Tab 2: Charts
+# Tab 2: Historical Charts
 with tab2:
     # Path to the CSV file
     server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
@@ -78,7 +79,7 @@ with tab2:
             moving_averages["Time"],
             moving_averages["7-Day Moving Average"],
             label="7-Day Moving Average",
-            color="orange",
+            color="red",
         )
         plt.plot(
             moving_averages["Time"],
@@ -94,22 +95,76 @@ with tab2:
 
         # Display the plot in Streamlit
         st.pyplot(plt)
-        # New: Calculate and display average prices by day of the week
-        st.subheader("Average Prices by Day of the Week")
-        day_avg = analyze_prices_by_day(server_csv_path)
 
-        # Plot the new chart
-        plt.figure(figsize=(10, 6))
-        day_avg.plot(kind="bar", color="skyblue", edgecolor="black")
-        plt.title("Average Prices by Day of the Week", fontsize=16)
-        plt.xlabel("Day of the Week", fontsize=12)
-        plt.ylabel("Average Price", fontsize=12)
-        plt.xticks(rotation=45, fontsize=10)
-        plt.tight_layout()
+        # Load market data
+        market_data = pd.read_csv("src/streamlit_app/data/market_metrics_data.csv")
 
-        # Display the new plot in Streamlit
-        st.pyplot(plt)
+        # Convert the 'time' column to datetime if not already
+        market_data["time"] = pd.to_datetime(market_data["time"])
 
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # # Add lines for Price on the primary y-axis
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=market_data["time"],
+        #         y=market_data["price"],
+        #         mode="lines",
+        #         name="Price",
+        #     )
+        # )
+
+        # Add bars for Total Volume on the primary y-axis
+        fig.add_trace(
+            go.Bar(
+                x=market_data["time"],
+                y=market_data["total_volume"],
+                name="Total Volume",
+                marker=dict(opacity=0.6),
+            )
+        )
+
+        # Add a line for Market Cap on the secondary y-axis
+        fig.add_trace(
+            go.Scatter(
+                x=market_data["time"],
+                y=market_data["market_cap"],
+                mode="lines",
+                name="Market Cap",
+                yaxis="y2",
+            )
+        )
+
+        # Customize layout
+        fig.update_layout(
+            title="Market Trends Over Time",
+            xaxis=dict(
+                title="Time",
+                rangeslider=dict(visible=True),  # Enable range slider for zooming
+                type="date",
+            ),
+            yaxis=dict(
+                title="Volume",
+                titlefont=dict(color="blue"),
+            ),
+            yaxis2=dict(
+                title="Market Cap",
+                titlefont=dict(color="green"),
+                overlaying="y",  # Overlay on the same plot
+                side="right",  # Align the second axis on the right
+            ),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        # Add interactivity: zoom/pan will auto-scale the x-axis labels
+        fig.update_xaxes(showspikes=True, spikemode="across", spikecolor="grey")
+        fig.update_layout(hovermode="x unified")
+
+        # Display the chart in Streamlit
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
@@ -160,8 +215,6 @@ with tab3:
                     daily_averages["Average Price"],
                     label="Daily Average",
                     color="blue",
-                    marker="o",
-                    markersize=2,
                 )
 
                 # Plot predictions
