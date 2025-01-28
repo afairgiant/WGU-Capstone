@@ -17,17 +17,15 @@ from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential, load_model
 
 
-def run_ohlc_prediction(data, days):
+def preprocess_data(data):
     """
-    Processes OHLC data and predicts future prices using linear regression,
-    with enhanced feature engineering, seasonal decomposition, and evaluation.
+    Preprocesses OHLC data by converting time, sorting, and adding basic features.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
-        days (int): Number of future days to predict.
 
     Returns:
-        pd.DataFrame: A DataFrame containing dates and predicted prices.
+        pd.DataFrame: Preprocessed DataFrame.
     """
     # Ensure required columns exist
     required_columns = ["time", "open", "high", "low", "close"]
@@ -42,12 +40,29 @@ def run_ohlc_prediction(data, days):
     data = data.sort_values(by="time")
 
     # Feature Engineering
-    data["timestamp"] = data["time"].apply(lambda x: x.timestamp())
     data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
     data["moving_avg_10"] = data["close"].rolling(window=10, min_periods=1).mean()
     data["daily_return"] = data["close"].pct_change()
 
-    # Add seasonal decomposition components
+    # Time-Derived Features
+    data["day_of_week"] = data["time"].dt.dayofweek
+    data["month"] = data["time"].dt.month
+    data["year"] = data["time"].dt.year
+
+    # print(data.head())  # Debugging: Check the data
+    return data
+
+
+def add_seasonal_decomposition(data):
+    """
+    Adds seasonal decomposition components to the data.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing OHLC data.
+
+    Returns:
+        pd.DataFrame: DataFrame with added seasonal decomposition components.
+    """
     if len(data) >= 730:
         decomposition = seasonal_decompose(data["close"], model="additive", period=365)
         data["trend"] = decomposition.trend
@@ -59,10 +74,23 @@ def run_ohlc_prediction(data, days):
         data["seasonal"] = 0
         data["residual"] = 0
 
-    # Time-Derived Features
-    data["day_of_week"] = data["time"].dt.dayofweek
-    data["month"] = data["time"].dt.month
-    data["year"] = data["time"].dt.year
+    return data
+
+
+def run_ohlc_prediction(data, days):
+    """
+    Processes OHLC data and predicts future prices using linear regression.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing OHLC data.
+        days (int): Number of future days to predict.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing dates and predicted prices.
+    """
+    # Preprocess data
+    data = preprocess_data(data)
+    data = add_seasonal_decomposition(data)
 
     # Drop rows with NaN values
     data = data.dropna()
@@ -71,19 +99,17 @@ def run_ohlc_prediction(data, days):
         return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Prepare features and target variable
-    X = data[
-        [
-            "timestamp",
-            "moving_avg_5",
-            "moving_avg_10",
-            "daily_return",
-            "trend",
-            "seasonal",
-            "day_of_week",
-            "month",
-            "year",
-        ]
+    features = [
+        "moving_avg_5",
+        "moving_avg_10",
+        "daily_return",
+        "trend",
+        "seasonal",
+        "day_of_week",
+        "month",
+        "year",
     ]
+    X = data[features]
     y = data["close"]
 
     # Scale the data
@@ -115,7 +141,6 @@ def run_ohlc_prediction(data, days):
     # Generate future feature data
     future_data = pd.DataFrame(
         {
-            "timestamp": [d.timestamp() for d in future_dates],
             "moving_avg_5": [data["moving_avg_5"].iloc[-1]] * days,
             "moving_avg_10": [data["moving_avg_10"].iloc[-1]] * days,
             "daily_return": [data["daily_return"].iloc[-1]] * days,
