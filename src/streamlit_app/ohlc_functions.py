@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime, timedelta
 
@@ -16,8 +17,13 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential, load_model
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-def preprocess_data(data):
+
+def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocesses OHLC data by converting time, sorting, and adding basic features.
 
@@ -26,6 +32,9 @@ def preprocess_data(data):
 
     Returns:
         pd.DataFrame: Preprocessed DataFrame.
+
+    Raises:
+        ValueError: If required columns are missing or data is empty.
     """
     # Ensure required columns exist
     required_columns = ["time", "open", "high", "low", "close"]
@@ -33,11 +42,18 @@ def preprocess_data(data):
         missing_cols = [col for col in required_columns if col not in data.columns]
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
+    if data.empty:
+        raise ValueError("The input data is empty.")
+
     # Convert time column to datetime
-    data["time"] = pd.to_datetime(data["time"])
+    data["time"] = pd.to_datetime(data["time"], errors="coerce")
+
+    # Check for duplicate timestamps
+    if data["time"].duplicated().any():
+        raise ValueError("Duplicate timestamps found in the data.")
 
     # Sort data by time
-    data = data.sort_values(by="time")
+    data = data.sort_values(by="time").reset_index(drop=True)
 
     # Feature Engineering
     data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
@@ -49,11 +65,10 @@ def preprocess_data(data):
     data["month"] = data["time"].dt.month
     data["year"] = data["time"].dt.year
 
-    # print(data.head())  # Debugging: Check the data
     return data
 
 
-def add_seasonal_decomposition(data):
+def add_seasonal_decomposition(data: pd.DataFrame) -> pd.DataFrame:
     """
     Adds seasonal decomposition components to the data.
 
@@ -63,13 +78,20 @@ def add_seasonal_decomposition(data):
     Returns:
         pd.DataFrame: DataFrame with added seasonal decomposition components.
     """
-    if len(data) >= 730:
+    if len(data) < 730:
+        print("Not enough data for seasonal decomposition. Skipping this step.")
+        data["trend"] = 0
+        data["seasonal"] = 0
+        data["residual"] = 0
+        return data
+
+    try:
         decomposition = seasonal_decompose(data["close"], model="additive", period=365)
         data["trend"] = decomposition.trend
         data["seasonal"] = decomposition.seasonal
         data["residual"] = decomposition.resid
-    else:
-        print("Not enough data for seasonal decomposition. Skipping this step.")
+    except Exception as e:
+        print(f"Error during seasonal decomposition: {e}")
         data["trend"] = 0
         data["seasonal"] = 0
         data["residual"] = 0
@@ -77,7 +99,7 @@ def add_seasonal_decomposition(data):
     return data
 
 
-def run_ohlc_prediction(data, days):
+def run_ohlc_prediction(data: pd.DataFrame, days: int) -> pd.DataFrame:
     """
     Processes OHLC data and predicts future prices using linear regression.
 
@@ -95,7 +117,9 @@ def run_ohlc_prediction(data, days):
     # Drop rows with NaN values
     data = data.dropna()
     if data.empty:
-        print("Not enough data for prediction after cleaning. Returning empty results.")
+        logging.warning(
+            "Not enough data for prediction after cleaning. Returning empty results."
+        )
         return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Prepare features and target variable
@@ -117,7 +141,7 @@ def run_ohlc_prediction(data, days):
     try:
         X_scaled = scaler.fit_transform(X)
     except ValueError as e:
-        print(f"Scaling error: {e}")
+        logging.error(f"Scaling error: {e}")
         return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Train-Test Split for Model Evaluation
@@ -132,7 +156,7 @@ def run_ohlc_prediction(data, days):
     # Evaluate model
     y_pred = model.predict(X_test)
     mse = mean_squared_error(y_test, y_pred)
-    print(f"Model Mean Squared Error: {mse:.4f}")
+    logging.info(f"Model Mean Squared Error: {mse:.4f}")
 
     # Predict future prices
     last_time = data["time"].iloc[-1]
@@ -207,7 +231,7 @@ def calculate_daily_average(data):
     return daily_avg
 
 
-def lstm_crypto_forecast(data, days):
+def lstm_crypto_forecast(data: pd.DataFrame, days: int) -> pd.DataFrame:
     """
     Predict future cryptocurrency prices using an LSTM model.
 
@@ -223,6 +247,11 @@ def lstm_crypto_forecast(data, days):
     if not all(col in data.columns for col in required_columns):
         missing_cols = [col for col in required_columns if col not in data.columns]
         raise ValueError(f"The data is missing columns: {missing_cols}")
+
+    if len(data) < 30:
+        raise ValueError(
+            "Insufficient data for LSTM training. At least 30 rows are required."
+        )
 
     # Preprocess data
     data["time"] = pd.to_datetime(data["time"])
@@ -258,7 +287,11 @@ def lstm_crypto_forecast(data, days):
     y_train, y_val, y_test = y[:split_train], y[split_train:split_val], y[split_val:]
 
     # Train the model
-    model = train_lstm_model(X_train, y_train, X_val, y_val, n_steps, X.shape[2])
+    try:
+        model = train_lstm_model(X_train, y_train, X_val, y_val, n_steps, X.shape[2])
+    except Exception as e:
+        logging.error(f"Error during LSTM model training: {e}")
+        return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Predict future prices
     future_predictions = predict_future_prices(
