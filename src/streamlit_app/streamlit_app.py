@@ -34,6 +34,9 @@ from src.streamlit_app.ohlc_functions import (
 COIN_ID = "bitcoin"
 download_ohlc_data(COIN_ID, 30)
 
+# Configuration
+DATA_PATH = "src/streamlit_app/data"
+
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
 # Create tabs
@@ -50,7 +53,7 @@ with tab1:
 # Tab 2: Historical Charts
 with tab2:
     # Path to the CSV file
-    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    server_csv_path = f"{DATA_PATH}/ohlc_data.csv"
 
     # Streamlit Tab for Historical Data
     st.title("Historical Data")
@@ -94,7 +97,7 @@ with tab2:
         st.pyplot(plt)
 
         # Load market data
-        market_data = pd.read_csv("src/streamlit_app/data/market_metrics_data.csv")
+        market_data = pd.read_csv(f"{DATA_PATH}//market_metrics_data.csv")
 
         # Convert the 'time' column to datetime if not already
         market_data["time"] = pd.to_datetime(market_data["time"])
@@ -173,7 +176,7 @@ with tab3:
         "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
     )
     # Path to the CSV file
-    server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    server_csv_path = f"{DATA_PATH}//ohlc_data.csv"
 
     # Number of days for predictions
     days = st.number_input(
