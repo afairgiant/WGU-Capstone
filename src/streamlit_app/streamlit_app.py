@@ -1,6 +1,6 @@
 import os
 import sys
-from http import server
+
 
 import plotly.graph_objects as go
 from utils import load_api_key
@@ -21,9 +21,6 @@ from sentiment_functions import (
     plot_sentiment_over_time,
     process_news_sentiment,
 )
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import PolynomialFeatures
 
 from src.streamlit_app.ohlc_functions import (
     analyze_prices_by_day,
