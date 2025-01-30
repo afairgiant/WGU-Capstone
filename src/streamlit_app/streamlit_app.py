@@ -12,7 +12,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_downloader_2 import download_ohlc_data, download_blockchain_metrics
+from data_downloader_2 import download_and_save_ohlc_data, download_blockchain_metrics
+from financial_functions import (
+    analyze_prices_by_day,
+    calculate_daily_average,
+    calculate_moving_averages,
+    lstm_crypto_forecast,
+    run_ohlc_prediction,
+)
 from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
@@ -95,7 +102,7 @@ with tab2:
 
         # Display the plot in Streamlit
         st.pyplot(plt)
-        
+
         # New: Calculate and display average prices by day of the week
         st.subheader("Average Prices by Day of the Week")
         day_avg = analyze_prices_by_day(server_csv_path)
@@ -114,7 +121,7 @@ with tab2:
 
         # Download latest market data
         download_blockchain_metrics("configs/api_keys.json", "apiKey_gecko")
-        
+
         # Load market data
         market_data = pd.read_csv(f"{DATA_PATH}//market_metrics_data.csv")
 
@@ -123,7 +130,9 @@ with tab2:
 
         # Calculate the start and end dates for the past 30 days
         end_date = market_data["time"].max()  # Most recent date in the data
-        start_date = end_date - pd.Timedelta(days=30)  # 30 days before the most recent date
+        start_date = end_date - pd.Timedelta(
+            days=30
+        )  # 30 days before the most recent date
 
         # Create a Plotly figure
         fig = go.Figure()
@@ -146,7 +155,7 @@ with tab2:
                 mode="lines",
                 name="Market Cap",
                 yaxis="y2",
-                line=dict(color="green")
+                line=dict(color="green"),
             )
         )
 
