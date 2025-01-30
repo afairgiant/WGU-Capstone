@@ -1,7 +1,6 @@
 import os
 import sys
 
-
 import plotly.graph_objects as go
 from utils import load_api_key
 
@@ -30,12 +29,13 @@ from src.streamlit_app.ohlc_functions import (
     run_ohlc_prediction,
 )
 
-# Update any missing data from past 30 days at program start.
-COIN_ID = "bitcoin"
-download_ohlc_data(COIN_ID, 30)
-
 # Configuration
 DATA_PATH = "src/streamlit_app/data"
+COIN_ID = "bitcoin"
+
+# Update any missing data from past 30 days at program start.
+download_ohlc_data(COIN_ID, 30)
+
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
@@ -95,7 +95,23 @@ with tab2:
 
         # Display the plot in Streamlit
         st.pyplot(plt)
+        
+        # New: Calculate and display average prices by day of the week
+        st.subheader("Average Prices by Day of the Week")
+        day_avg = analyze_prices_by_day(server_csv_path)
 
+        # Plot the new chart
+        plt.figure(figsize=(10, 6))
+        day_avg.plot(kind="bar", color="skyblue", edgecolor="black")
+        plt.title("Average Prices by Day of the Week", fontsize=16)
+        plt.xlabel("Day of the Week", fontsize=12)
+        plt.ylabel("Average Price", fontsize=12)
+        plt.xticks(rotation=45, fontsize=10)
+        plt.tight_layout()
+
+        # Display the new plot in Streamlit
+        st.pyplot(plt)
+        
         # Load market data
         market_data = pd.read_csv(f"{DATA_PATH}//market_metrics_data.csv")
 
@@ -104,16 +120,6 @@ with tab2:
 
         # Create a Plotly figure
         fig = go.Figure()
-
-        # # Add lines for Price on the primary y-axis
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=market_data["time"],
-        #         y=market_data["price"],
-        #         mode="lines",
-        #         name="Price",
-        #     )
-        # )
 
         # Add bars for Total Volume on the primary y-axis
         fig.add_trace(
