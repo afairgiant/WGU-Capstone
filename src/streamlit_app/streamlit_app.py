@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_downloader_2 import download_ohlc_data
+from data_downloader_2 import download_ohlc_data, download_blockchain_metrics
 from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
@@ -111,12 +111,19 @@ with tab2:
 
         # Display the new plot in Streamlit
         st.pyplot(plt)
+
+        # Download latest market data
+        download_blockchain_metrics("configs/api_keys.json", "apiKey_gecko")
         
         # Load market data
         market_data = pd.read_csv(f"{DATA_PATH}//market_metrics_data.csv")
 
         # Convert the 'time' column to datetime if not already
         market_data["time"] = pd.to_datetime(market_data["time"])
+
+        # Calculate the start and end dates for the past 30 days
+        end_date = market_data["time"].max()  # Most recent date in the data
+        start_date = end_date - pd.Timedelta(days=30)  # 30 days before the most recent date
 
         # Create a Plotly figure
         fig = go.Figure()
@@ -139,6 +146,7 @@ with tab2:
                 mode="lines",
                 name="Market Cap",
                 yaxis="y2",
+                line=dict(color="green")
             )
         )
 
@@ -165,8 +173,15 @@ with tab2:
             ),
         )
 
+        # Set the initial x-axis range to the past 30 days
+        fig.update_xaxes(
+            range=[start_date, end_date],  # Focus on the past 30 days
+            showspikes=True,
+            spikemode="across",
+            spikecolor="grey",
+        )
+
         # Add interactivity: zoom/pan will auto-scale the x-axis labels
-        fig.update_xaxes(showspikes=True, spikemode="across", spikecolor="grey")
         fig.update_layout(hovermode="x unified")
 
         # Display the chart in Streamlit
