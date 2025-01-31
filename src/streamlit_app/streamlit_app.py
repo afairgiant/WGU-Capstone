@@ -169,11 +169,11 @@ with tab2:
             ),
             yaxis=dict(
                 title="Volume",
-                titlefont=dict(color="blue"),
+                title_font=dict(color="blue"),
             ),
             yaxis2=dict(
                 title="Market Cap",
-                titlefont=dict(color="green"),
+                title_font=dict(color="green"),
                 overlaying="y",  # Overlay on the same plot
                 side="right",  # Align the second axis on the right
             ),
