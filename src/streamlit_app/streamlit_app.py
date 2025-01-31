@@ -1,7 +1,7 @@
 import os
 import sys
-from http import server
 
+import plotly.graph_objects as go
 from utils import load_api_key
 
 # Add the project root directory to Python's search path
@@ -12,28 +12,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_downloader_2 import download_ohlc_data
-from financial_functions import (
+from data_downloader_2 import download_blockchain_metrics, download_ohlc_data
+from matplotlib import markers
+from ohlc_functions import (
     analyze_prices_by_day,
     calculate_daily_average,
     calculate_moving_averages,
     lstm_crypto_forecast,
     run_ohlc_prediction,
 )
-from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
     plot_sentiment_distribution,
     plot_sentiment_over_time,
     process_news_sentiment,
 )
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import PolynomialFeatures
+
+from src.streamlit_app.ohlc_functions import (
+    analyze_prices_by_day,
+    calculate_daily_average,
+    calculate_moving_averages,
+    lstm_crypto_forecast,
+    run_ohlc_prediction,
+)
+
+# Configuration
+DATA_PATH = "src/streamlit_app/data"
+COIN_ID = "bitcoin"
 
 # Update any missing data from past 30 days at program start.
-COIN_ID = "bitcoin"
 download_ohlc_data(COIN_ID, 30)
+
 
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
@@ -48,17 +57,17 @@ with tab1:
     st.write("This is the home page. Use the tabs above to navigate.")
 
 
-# Tab 2: Charts
+# Tab 2: Historical Charts
 with tab2:
     # Path to the CSV file
-    ohlc_server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    server_csv_path = f"{DATA_PATH}/ohlc_data.csv"
 
     # Streamlit Tab for Historical Data
     st.title("Historical Data")
     st.write("This tab is used to visualize historical data for bitcoin.")
     try:
         # Calculate moving averages
-        moving_averages = calculate_moving_averages(ohlc_server_csv_path)
+        moving_averages = calculate_moving_averages(server_csv_path)
 
         # Display the DataFrame
         st.subheader("Processed Data")
@@ -77,7 +86,7 @@ with tab2:
             moving_averages["Time"],
             moving_averages["7-Day Moving Average"],
             label="7-Day Moving Average",
-            color="orange",
+            color="red",
         )
         plt.plot(
             moving_averages["Time"],
@@ -93,9 +102,10 @@ with tab2:
 
         # Display the plot in Streamlit
         st.pyplot(plt)
+
         # New: Calculate and display average prices by day of the week
         st.subheader("Average Prices by Day of the Week")
-        day_avg = analyze_prices_by_day(ohlc_server_csv_path)
+        day_avg = analyze_prices_by_day(server_csv_path)
 
         # Plot the new chart
         plt.figure(figsize=(10, 6))
@@ -109,6 +119,82 @@ with tab2:
         # Display the new plot in Streamlit
         st.pyplot(plt)
 
+        # Download latest market data
+        download_blockchain_metrics("configs/api_keys.json", "apiKey_gecko")
+
+        # Load market data
+        market_data = pd.read_csv(f"{DATA_PATH}//market_metrics_data.csv")
+
+        # Convert the 'time' column to datetime if not already
+        market_data["time"] = pd.to_datetime(market_data["time"])
+
+        # Calculate the start and end dates for the past 30 days
+        end_date = market_data["time"].max()  # Most recent date in the data
+        start_date = end_date - pd.Timedelta(
+            days=30
+        )  # 30 days before the most recent date
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Add bars for Total Volume on the primary y-axis
+        fig.add_trace(
+            go.Bar(
+                x=market_data["time"],
+                y=market_data["total_volume"],
+                name="Total Volume",
+                marker=dict(opacity=0.6),
+            )
+        )
+
+        # Add a line for Market Cap on the secondary y-axis
+        fig.add_trace(
+            go.Scatter(
+                x=market_data["time"],
+                y=market_data["market_cap"],
+                mode="lines",
+                name="Market Cap",
+                yaxis="y2",
+                line=dict(color="green"),
+            )
+        )
+
+        # Customize layout
+        fig.update_layout(
+            title="Market Trends Over Time",
+            xaxis=dict(
+                title="Time",
+                rangeslider=dict(visible=True),  # Enable range slider for zooming
+                type="date",
+            ),
+            yaxis=dict(
+                title="Volume",
+                titlefont=dict(color="blue"),
+            ),
+            yaxis2=dict(
+                title="Market Cap",
+                titlefont=dict(color="green"),
+                overlaying="y",  # Overlay on the same plot
+                side="right",  # Align the second axis on the right
+            ),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+        )
+
+        # Set the initial x-axis range to the past 30 days
+        fig.update_xaxes(
+            range=[start_date, end_date],  # Focus on the past 30 days
+            showspikes=True,
+            spikemode="across",
+            spikecolor="grey",
+        )
+
+        # Add interactivity: zoom/pan will auto-scale the x-axis labels
+        fig.update_layout(hovermode="x unified")
+
+        # Display the chart in Streamlit
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
@@ -120,7 +206,7 @@ with tab3:
         "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
     )
     # Path to the CSV file
-    ohlc_server_csv_path = "src/streamlit_app/data/ohlc_data.csv"
+    server_csv_path = f"{DATA_PATH}//ohlc_data.csv"
 
     # Number of days for predictions
     days = st.number_input(
@@ -131,13 +217,13 @@ with tab3:
     )
     # Button to trigger predictions
     if st.button("Run Price Prediction"):
-        if ohlc_server_csv_path is not None:
+        if server_csv_path is not None:
             try:
                 # Update any missing data from past 30 days before future predictions.
                 download_ohlc_data(COIN_ID, 30)
 
                 # Read the uploaded file as a DataFrame
-                data = pd.read_csv(ohlc_server_csv_path)
+                data = pd.read_csv(server_csv_path)
 
                 # Calculate the daily averages
                 daily_averages = calculate_daily_average(data)
@@ -159,7 +245,6 @@ with tab3:
                     daily_averages["Average Price"],
                     label="Daily Average",
                     color="blue",
-                    marker="o",
                 )
 
                 # Plot predictions
@@ -183,7 +268,7 @@ with tab3:
                 lstm_predictions = lstm_crypto_forecast(data, days)
 
                 # Plot LSTM predictions and actual data
-                st.subheader("LSTM Predicted Prices with Historical Data")
+                st.subheader("LSTM Predicted Prices with Daily Price Historical Data")
                 fig_lstm, ax_lstm = plt.subplots()
 
                 # Plot historical close prices
@@ -237,8 +322,7 @@ with tab4:
     st.write(
         "This analysis uses the NewsAPI to fetch news articles and analyze public sentiment."
     )
-    # User inputs
-    # NEWS_API_KEY = st.text_input("Enter your NewsAPI Key:", type="password")
+
     NEWS_API_KEY = load_api_key("configs/api_keys.json", "apiKey_newsapi")
     QUERY = st.text_input("Enter the keyword to search for:", value="Bitcoin")
 

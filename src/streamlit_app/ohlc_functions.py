@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime, timedelta
 
@@ -16,11 +17,91 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential, load_model
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-def run_ohlc_prediction(data, days):
+
+def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Processes OHLC data and predicts future prices using linear regression,
-    with enhanced feature engineering, seasonal decomposition, and evaluation.
+    Preprocesses OHLC data by converting time, sorting, and adding basic features.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing OHLC data.
+
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame.
+
+    Raises:
+        ValueError: If required columns are missing or data is empty.
+    """
+    # Ensure required columns exist
+    required_columns = ["time", "open", "high", "low", "close"]
+    if not all(col in data.columns for col in required_columns):
+        missing_cols = [col for col in required_columns if col not in data.columns]
+        raise ValueError(f"The data is missing columns: {missing_cols}")
+
+    if data.empty:
+        raise ValueError("The input data is empty.")
+
+    # Convert time column to datetime
+    data["time"] = pd.to_datetime(data["time"], errors="coerce")
+
+    # Check for duplicate timestamps
+    if data["time"].duplicated().any():
+        raise ValueError("Duplicate timestamps found in the data.")
+
+    # Sort data by time
+    data = data.sort_values(by="time").reset_index(drop=True)
+
+    # Feature Engineering
+    data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
+    data["moving_avg_10"] = data["close"].rolling(window=10, min_periods=1).mean()
+    data["daily_return"] = data["close"].pct_change()
+
+    # Time-Derived Features
+    data["day_of_week"] = data["time"].dt.dayofweek
+    data["month"] = data["time"].dt.month
+    data["year"] = data["time"].dt.year
+
+    return data
+
+
+def add_seasonal_decomposition(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds seasonal decomposition components to the data.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing OHLC data.
+
+    Returns:
+        pd.DataFrame: DataFrame with added seasonal decomposition components.
+    """
+    if len(data) < 730:
+        print("Not enough data for seasonal decomposition. Skipping this step.")
+        data["trend"] = 0
+        data["seasonal"] = 0
+        data["residual"] = 0
+        return data
+
+    try:
+        decomposition = seasonal_decompose(data["close"], model="additive", period=365)
+        data["trend"] = decomposition.trend
+        data["seasonal"] = decomposition.seasonal
+        data["residual"] = decomposition.resid
+    except Exception as e:
+        print(f"Error during seasonal decomposition: {e}")
+        data["trend"] = 0
+        data["seasonal"] = 0
+        data["residual"] = 0
+
+    return data
+
+
+def run_ohlc_prediction(data: pd.DataFrame, days: int) -> pd.DataFrame:
+    """
+    Processes OHLC data and predicts future prices using linear regression.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -29,61 +110,30 @@ def run_ohlc_prediction(data, days):
     Returns:
         pd.DataFrame: A DataFrame containing dates and predicted prices.
     """
-    # Ensure required columns exist
-    required_columns = ["time", "open", "high", "low", "close"]
-    if not all(col in data.columns for col in required_columns):
-        missing_cols = [col for col in required_columns if col not in data.columns]
-        raise ValueError(f"The data is missing columns: {missing_cols}")
-
-    # Convert time column to datetime
-    data["time"] = pd.to_datetime(data["time"])
-
-    # Sort data by time
-    data = data.sort_values(by="time")
-
-    # Feature Engineering
-    data["timestamp"] = data["time"].apply(lambda x: x.timestamp())
-    data["moving_avg_5"] = data["close"].rolling(window=5, min_periods=1).mean()
-    data["moving_avg_10"] = data["close"].rolling(window=10, min_periods=1).mean()
-    data["daily_return"] = data["close"].pct_change()
-
-    # Add seasonal decomposition components
-    if len(data) >= 730:
-        decomposition = seasonal_decompose(data["close"], model="additive", period=365)
-        data["trend"] = decomposition.trend
-        data["seasonal"] = decomposition.seasonal
-        data["residual"] = decomposition.resid
-    else:
-        print("Not enough data for seasonal decomposition. Skipping this step.")
-        data["trend"] = 0
-        data["seasonal"] = 0
-        data["residual"] = 0
-
-    # Time-Derived Features
-    data["day_of_week"] = data["time"].dt.dayofweek
-    data["month"] = data["time"].dt.month
-    data["year"] = data["time"].dt.year
+    # Preprocess data
+    data = preprocess_data(data)
+    data = add_seasonal_decomposition(data)
 
     # Drop rows with NaN values
     data = data.dropna()
     if data.empty:
-        print("Not enough data for prediction after cleaning. Returning empty results.")
+        logging.warning(
+            "Not enough data for prediction after cleaning. Returning empty results."
+        )
         return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Prepare features and target variable
-    X = data[
-        [
-            "timestamp",
-            "moving_avg_5",
-            "moving_avg_10",
-            "daily_return",
-            "trend",
-            "seasonal",
-            "day_of_week",
-            "month",
-            "year",
-        ]
+    features = [
+        "moving_avg_5",
+        "moving_avg_10",
+        "daily_return",
+        "trend",
+        "seasonal",
+        "day_of_week",
+        "month",
+        "year",
     ]
+    X = data[features]
     y = data["close"]
 
     # Scale the data
@@ -91,7 +141,7 @@ def run_ohlc_prediction(data, days):
     try:
         X_scaled = scaler.fit_transform(X)
     except ValueError as e:
-        print(f"Scaling error: {e}")
+        logging.error(f"Scaling error: {e}")
         return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Train-Test Split for Model Evaluation
@@ -106,7 +156,7 @@ def run_ohlc_prediction(data, days):
     # Evaluate model
     y_pred = model.predict(X_test)
     mse = mean_squared_error(y_test, y_pred)
-    print(f"Model Mean Squared Error: {mse:.4f}")
+    logging.info(f"Model Mean Squared Error: {mse:.4f}")
 
     # Predict future prices
     last_time = data["time"].iloc[-1]
@@ -115,7 +165,6 @@ def run_ohlc_prediction(data, days):
     # Generate future feature data
     future_data = pd.DataFrame(
         {
-            "timestamp": [d.timestamp() for d in future_dates],
             "moving_avg_5": [data["moving_avg_5"].iloc[-1]] * days,
             "moving_avg_10": [data["moving_avg_10"].iloc[-1]] * days,
             "daily_return": [data["daily_return"].iloc[-1]] * days,
@@ -182,10 +231,9 @@ def calculate_daily_average(data):
     return daily_avg
 
 
-def lstm_crypto_forecast(data, days):
+def lstm_crypto_forecast(data: pd.DataFrame, days: int) -> pd.DataFrame:
     """
-    Predict future cryptocurrency prices using an LSTM model, with validation, early stopping,
-    time-derived features, and enhanced prediction handling.
+    Predict future cryptocurrency prices using an LSTM model.
 
     Args:
         data (pd.DataFrame): DataFrame containing OHLC data.
@@ -200,14 +248,19 @@ def lstm_crypto_forecast(data, days):
         missing_cols = [col for col in required_columns if col not in data.columns]
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
-    # Convert time column to datetime
+    if len(data) < 30:
+        raise ValueError(
+            "Insufficient data for LSTM training. At least 30 rows are required."
+        )
+
+    # Preprocess data
     data["time"] = pd.to_datetime(data["time"])
     data.set_index("time", inplace=True)
 
     # Add time-derived features
     data["day_of_week"] = data.index.dayofweek
     data["month"] = data.index.month
-    data["lag_close"] = data["close"].shift(1)  # Lagged close price
+    data["lag_close"] = data["close"].shift(1)
     data = data.dropna()
 
     # Scale the data
@@ -233,64 +286,17 @@ def lstm_crypto_forecast(data, days):
     X_train, X_val, X_test = X[:split_train], X[split_train:split_val], X[split_val:]
     y_train, y_val, y_test = y[:split_train], y[split_train:split_val], y[split_val:]
 
-    # Build the LSTM model
-    model = Sequential(
-        [
-            LSTM(64, return_sequences=True, input_shape=(n_steps, X.shape[2])),
-            LSTM(64, return_sequences=False),
-            Dense(32),
-            Dense(1),
-        ]
-    )
-    model.compile(optimizer="adam", loss="mean_squared_error")
-
-    # Early stopping
-    early_stopping = EarlyStopping(
-        monitor="val_loss", patience=10, restore_best_weights=True
-    )
-
     # Train the model
-    history = model.fit(
-        X_train,
-        y_train,
-        validation_data=(X_val, y_val),
-        batch_size=32,
-        epochs=100,
-        verbose=1,
-        callbacks=[early_stopping],
-    )
-
-    # Save the model
-    model.save("lstm_crypto_model.keras")
+    try:
+        model = train_lstm_model(X_train, y_train, X_val, y_val, n_steps, X.shape[2])
+    except Exception as e:
+        logging.error(f"Error during LSTM model training: {e}")
+        return pd.DataFrame({"Date": [], "Predicted Price": []})
 
     # Predict future prices
-    future_predictions = []
-    last_sequence = scaled_data[-n_steps:, :]  # Last sequence of features
-    for _ in range(days):
-        last_sequence_reshaped = last_sequence.reshape(
-            (1, n_steps, last_sequence.shape[1])
-        )
-        next_prediction = model.predict(last_sequence_reshaped, verbose=0)
-        future_predictions.append(next_prediction[0, 0])
-
-        # Update the last_sequence
-        next_input = last_sequence[1:]  # Remove the first row (shift the sequence)
-        new_row = last_sequence[-1].copy()  # Copy the last row as a template
-        new_row[0] = next_prediction[
-            0, 0
-        ]  # Update the `close` feature with the prediction
-        last_sequence = np.vstack([next_input, new_row])  # Append the new row
-
-    # Transform predictions back to the original scale
-    future_predictions_expanded = np.zeros(
-        (len(future_predictions), scaled_data.shape[1])
+    future_predictions = predict_future_prices(
+        model, scaled_data, scaler, n_steps, days
     )
-    future_predictions_expanded[:, 0] = (
-        future_predictions  # Assign predictions to the `close` feature
-    )
-    future_predictions = scaler.inverse_transform(future_predictions_expanded)[
-        :, 0
-    ]  # Extract the `close` column
 
     # Generate future dates
     last_date = data.index[-1]
@@ -302,6 +308,87 @@ def lstm_crypto_forecast(data, days):
     )
 
     return predictions
+
+
+def train_lstm_model(X_train, y_train, X_val, y_val, n_steps, n_features):
+    """
+    Train an LSTM model with the given data.
+
+    Args:
+        X_train (np.ndarray): Training feature sequences.
+        y_train (np.ndarray): Training target values.
+        X_val (np.ndarray): Validation feature sequences.
+        y_val (np.ndarray): Validation target values.
+        n_steps (int): Number of time steps in the input sequence.
+        n_features (int): Number of features per time step.
+
+    Returns:
+        keras.Model: Trained LSTM model.
+    """
+    model = Sequential(
+        [
+            LSTM(64, return_sequences=True, input_shape=(n_steps, n_features)),
+            LSTM(64, return_sequences=False),
+            Dense(32),
+            Dense(1),
+        ]
+    )
+    model.compile(optimizer="adam", loss="mean_squared_error")
+
+    early_stopping = EarlyStopping(
+        monitor="val_loss", patience=10, restore_best_weights=True
+    )
+
+    model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        batch_size=32,
+        epochs=100,
+        verbose=1,
+        callbacks=[early_stopping],
+    )
+
+    model.save("lstm_crypto_model.keras")
+    return model
+
+
+def predict_future_prices(model, scaled_data, scaler, n_steps, days):
+    """
+    Predict future prices using a trained LSTM model.
+
+    Args:
+        model (keras.Model): Trained LSTM model.
+        scaled_data (np.ndarray): Scaled data array.
+        scaler (MinMaxScaler): Fitted scaler for inverse transformation.
+        n_steps (int): Number of time steps in the input sequence.
+        days (int): Number of future days to predict.
+
+    Returns:
+        np.ndarray: Array of predicted prices.
+    """
+    future_predictions = []
+    last_sequence = scaled_data[-n_steps:, :]
+    for _ in range(days):
+        last_sequence_reshaped = last_sequence.reshape(
+            (1, n_steps, last_sequence.shape[1])
+        )
+        next_prediction = model.predict(last_sequence_reshaped, verbose=0)
+        future_predictions.append(next_prediction[0, 0])
+
+        # Update the last_sequence
+        next_input = last_sequence[1:]
+        new_row = last_sequence[-1].copy()
+        new_row[0] = next_prediction[0, 0]
+        last_sequence = np.vstack([next_input, new_row])
+
+    future_predictions_expanded = np.zeros(
+        (len(future_predictions), scaled_data.shape[1])
+    )
+    future_predictions_expanded[:, 0] = future_predictions
+    future_predictions = scaler.inverse_transform(future_predictions_expanded)[:, 0]
+
+    return future_predictions
 
 
 def calculate_moving_averages(file):
