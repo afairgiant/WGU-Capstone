@@ -12,15 +12,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_downloader_2 import download_and_save_ohlc_data, download_blockchain_metrics
-from financial_functions import (
+from data_downloader_2 import download_blockchain_metrics, download_ohlc_data
+from matplotlib import markers
+from ohlc_functions import (
     analyze_prices_by_day,
     calculate_daily_average,
     calculate_moving_averages,
     lstm_crypto_forecast,
     run_ohlc_prediction,
 )
-from matplotlib import markers
 from sentiment_functions import (
     generate_word_cloud,
     plot_sentiment_distribution,
