@@ -1,12 +1,12 @@
+import logging
 import os
 import sys
 
 import plotly.graph_objects as go
-from utils import load_api_key
+from utils import load_api_key, setup_logging
 
 # Add the project root directory to Python's search path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-print("Current working directory:", os.getcwd())
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,14 +36,21 @@ from src.streamlit_app.ohlc_functions import (
     run_ohlc_prediction,
 )
 
+# Setup Logging
+setup_logging()
+
+# Log the current working directory
+logging.info(f"Current working directory: {os.getcwd()}")
+
 # Configuration
 DATA_PATH = "src/streamlit_app/data"
 COIN_ID = "bitcoin"
 
 # Update any missing data from past 30 days at program start.
+logging.info("Downloading OHLC data for the past 30 days...")
 download_ohlc_data(COIN_ID, 30)
 
-
+# Streamlit page configuration
 st.set_page_config(page_title="Crypto Data Visualizer", layout="wide")
 
 # Create tabs
@@ -55,7 +62,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 with tab1:
     st.title("Welcome to the App")
     st.write("This is the home page. Use the tabs above to navigate.")
-
+    logging.info("Home tab loaded.")
 
 # Tab 2: Historical Charts
 with tab2:
@@ -67,6 +74,7 @@ with tab2:
     st.write("This tab is used to visualize historical data for bitcoin.")
     try:
         # Calculate moving averages
+        logging.info("Calculating moving averages...")
         moving_averages = calculate_moving_averages(server_csv_path)
 
         # Display the DataFrame
@@ -105,6 +113,7 @@ with tab2:
 
         # New: Calculate and display average prices by day of the week
         st.subheader("Average Prices by Day of the Week")
+        logging.info("Calculating average prices by day of the week...")
         day_avg = analyze_prices_by_day(server_csv_path)
 
         # Plot the new chart
@@ -120,6 +129,7 @@ with tab2:
         st.pyplot(plt)
 
         # Download latest market data
+        logging.info("Downloading blockchain metrics...")
         download_blockchain_metrics("configs/api_keys.json", "apiKey_gecko")
 
         # Load market data
@@ -196,11 +206,11 @@ with tab2:
         # Display the chart in Streamlit
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
+        logging.error(f"An error occurred in the Historical Charts tab: {e}")
         st.error(f"An error occurred: {e}")
 
 # Tab 3: Futures
 with tab3:
-
     st.title("Bitcoin Price Prediction")
     st.write(
         "This tab is used to predict future prices of bitcoin using linear regression and a LSTM prediction model."
@@ -220,15 +230,18 @@ with tab3:
         if server_csv_path is not None:
             try:
                 # Update any missing data from past 30 days before future predictions.
+                logging.info("Downloading OHLC data for the past 30 days...")
                 download_ohlc_data(COIN_ID, 30)
 
                 # Read the uploaded file as a DataFrame
                 data = pd.read_csv(server_csv_path)
 
                 # Calculate the daily averages
+                logging.info("Calculating daily averages...")
                 daily_averages = calculate_daily_average(data)
 
                 # Run the prediction function
+                logging.info("Running OHLC prediction...")
                 predictions = run_ohlc_prediction(data, days)
 
                 # Display the predictions in a table
@@ -265,6 +278,7 @@ with tab3:
                 st.pyplot(fig)
 
                 # Run the LSTM prediction function
+                logging.info("Running LSTM prediction...")
                 lstm_predictions = lstm_crypto_forecast(data, days)
 
                 # Plot LSTM predictions and actual data
@@ -313,8 +327,8 @@ with tab3:
                 st.dataframe(lstm_predictions)
 
             except Exception as e:
+                logging.error(f"An error occurred in the Futures tab: {e}")
                 st.error(f"An error occurred: {e}")
-
 
 # Tab 4: Sentiment Analysis
 with tab4:
@@ -330,6 +344,7 @@ with tab4:
         if NEWS_API_KEY and QUERY:
             try:
                 # Fetch sentiment data
+                logging.info("Fetching sentiment data...")
                 sentiment_df = process_news_sentiment(NEWS_API_KEY, QUERY)
 
                 # Display sentiment data
@@ -352,6 +367,7 @@ with tab4:
                 st.pyplot(word_cloud_fig)
 
             except Exception as e:
+                logging.error(f"An error occurred in the Sentiment Analysis tab: {e}")
                 st.error(f"An error occurred: {e}")
         else:
             st.warning("Please provide both the API key and a keyword.")
@@ -366,3 +382,4 @@ with tab5:
         the data.
         """
     )
+    logging.info("About tab loaded.")

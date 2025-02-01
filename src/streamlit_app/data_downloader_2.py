@@ -5,12 +5,10 @@ from typing import Dict, List, Optional, Union
 
 import pandas as pd
 import requests
-from utils import load_api_key
+from utils import load_api_key, setup_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# Set up logging
+setup_logging()
 
 # Configuration
 API_BASE_URL = "https://api.coingecko.com/api/v3"
@@ -37,8 +35,10 @@ def fetch_data_from_api(
         dict: Parsed JSON response from the API.
     """
     try:
+        logging.info(f"Fetching data from API: {url}")
         response = requests.get(url, params=params, headers=headers)
         response.raise_for_status()
+        logging.info("API request successful.")
         return response.json()
     except requests.exceptions.RequestException as e:
         logging.error(f"API request failed: {e}")
@@ -75,7 +75,9 @@ def load_or_create_dataframe(file_path: str, columns: List[str]) -> pd.DataFrame
         pd.DataFrame: Loaded or newly created DataFrame.
     """
     if os.path.exists(file_path):
+        logging.info(f"Loading existing data from {file_path}")
         return pd.read_csv(file_path, parse_dates=["time"])
+    logging.info(f"Creating new DataFrame as {file_path} does not exist.")
     return pd.DataFrame(columns=columns)
 
 
@@ -117,6 +119,7 @@ def download_ohlc_data(
     Returns:
         str: Path to the saved CSV file.
     """
+    logging.info(f"Starting OHLC data download for {coin_id} for the past {days} days.")
     if os.path.exists(metadata_file):
         with open(metadata_file, "r") as file:
             last_download = datetime.strptime(file.read().strip(), "%Y-%m-%d %H:%M:%S")
@@ -128,6 +131,7 @@ def download_ohlc_data(
     params = {"vs_currency": "usd", "days": days}
     ohlc_data = fetch_data_from_api(url, params=params)
     if not ohlc_data:
+        logging.error("No data returned by the API.")
         raise ValueError("No data returned by the API.")
 
     df = pd.DataFrame(ohlc_data, columns=["time", "open", "high", "low", "close"])
@@ -142,6 +146,7 @@ def download_ohlc_data(
     save_dataframe_to_csv(updated_df, output_file)
 
     update_metadata(metadata_file)
+    logging.info(f"OHLC data download and update complete for {coin_id}.")
     return output_file
 
 
@@ -164,6 +169,7 @@ def download_blockchain_metrics(
     Returns:
         str: Path to the saved CSV file.
     """
+    logging.info("Starting blockchain metrics download.")
     if os.path.exists(metadata_file):
         with open(metadata_file, "r") as file:
             last_download = datetime.strptime(file.read().strip(), "%Y-%m-%d %H:%M:%S")
@@ -173,6 +179,7 @@ def download_blockchain_metrics(
 
     api_key = load_api_key(api_key_path, key_name)
     if not api_key:
+        logging.error("Missing API key. Check your configuration.")
         raise ValueError("Missing API key. Check your configuration.")
 
     url = f"{API_BASE_URL}/coins/bitcoin/market_chart"
@@ -186,6 +193,7 @@ def download_blockchain_metrics(
         data.get("total_volumes", []),
     )
     if not prices:
+        logging.error("No data retrieved from the API.")
         raise ValueError("No data retrieved from the API.")
 
     df = pd.DataFrame(
@@ -198,22 +206,25 @@ def download_blockchain_metrics(
     )
     save_dataframe_to_csv(df, output_file)
     update_metadata(metadata_file)
-
+    logging.info("Blockchain metrics download and update complete.")
     return output_file
 
 
 # Example usage
 if __name__ == "__main__":
+    logging.info("Starting data downloader script...")
     # Parameters
     COIN_ID = "bitcoin"
     DAYS = 30
 
     # Download, clean, and save data
     try:
+        logging.info(f"Downloading OHLC data for {COIN_ID}...")
         download_ohlc_data(COIN_ID, DAYS, DEFAULT_OHLC_OUTPUT_FILE)
-        # download_ohlc_data(COIN_ID, DAYS, OHLC_TRAINING_FILE)
+        logging.info(f"Downloading blockchain metrics for {COIN_ID}...")
         download_blockchain_metrics(
             "configs/api_keys.json", "apiKey_gecko", DEFAULT_MARKET_OUTPUT_FILE
         )
+        logging.info("Data downloader script execution complete.")
     except Exception as e:
         logging.error(f"An error occurred: {e}")

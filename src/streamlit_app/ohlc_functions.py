@@ -16,11 +16,10 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential, load_model
+from utils import setup_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# Set up logging
+setup_logging()
 
 
 def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
@@ -36,13 +35,16 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     Raises:
         ValueError: If required columns are missing or data is empty.
     """
+    logging.info("Preprocessing OHLC data...")
     # Ensure required columns exist
     required_columns = ["time", "open", "high", "low", "close"]
     if not all(col in data.columns for col in required_columns):
         missing_cols = [col for col in required_columns if col not in data.columns]
+        logging.error(f"The data is missing columns: {missing_cols}")
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
     if data.empty:
+        logging.error("The input data is empty.")
         raise ValueError("The input data is empty.")
 
     # Convert time column to datetime
@@ -50,6 +52,7 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Check for duplicate timestamps
     if data["time"].duplicated().any():
+        logging.error("Duplicate timestamps found in the data.")
         raise ValueError("Duplicate timestamps found in the data.")
 
     # Sort data by time
@@ -65,6 +68,7 @@ def preprocess_data(data: pd.DataFrame) -> pd.DataFrame:
     data["month"] = data["time"].dt.month
     data["year"] = data["time"].dt.year
 
+    logging.info("OHLC data preprocessing complete.")
     return data
 
 
@@ -78,8 +82,11 @@ def add_seasonal_decomposition(data: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame with added seasonal decomposition components.
     """
+    logging.info("Adding seasonal decomposition components...")
     if len(data) < 730:
-        print("Not enough data for seasonal decomposition. Skipping this step.")
+        logging.warning(
+            "Not enough data for seasonal decomposition. Skipping this step."
+        )
         data["trend"] = 0
         data["seasonal"] = 0
         data["residual"] = 0
@@ -91,11 +98,12 @@ def add_seasonal_decomposition(data: pd.DataFrame) -> pd.DataFrame:
         data["seasonal"] = decomposition.seasonal
         data["residual"] = decomposition.resid
     except Exception as e:
-        print(f"Error during seasonal decomposition: {e}")
+        logging.error(f"Error during seasonal decomposition: {e}")
         data["trend"] = 0
         data["seasonal"] = 0
         data["residual"] = 0
 
+    logging.info("Seasonal decomposition components added.")
     return data
 
 
@@ -110,6 +118,7 @@ def run_ohlc_prediction(data: pd.DataFrame, days: int) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A DataFrame containing dates and predicted prices.
     """
+    logging.info(f"Running OHLC prediction for {days} days...")
     # Preprocess data
     data = preprocess_data(data)
     data = add_seasonal_decomposition(data)
@@ -184,6 +193,7 @@ def run_ohlc_prediction(data: pd.DataFrame, days: int) -> pd.DataFrame:
     predictions = pd.DataFrame(
         {"Date": future_dates, "Predicted Price": future_predictions}
     )
+    logging.info("OHLC prediction complete.")
     return predictions
 
 
@@ -197,10 +207,12 @@ def calculate_daily_average(data):
     Returns:
         pd.DataFrame: A DataFrame containing dates and their corresponding daily average prices.
     """
+    logging.info("Calculating daily average prices...")
     # Ensure required columns exist
     required_columns = ["time", "open", "high", "low", "close"]
     if not all(col in data.columns for col in required_columns):
         missing_cols = [col for col in required_columns if col not in data.columns]
+        logging.error(f"The data is missing columns: {missing_cols}")
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
     # Convert time column to datetime if not already
@@ -208,13 +220,15 @@ def calculate_daily_average(data):
         data["time"] = pd.to_datetime(data["time"])
 
     # Debugging: Check the data
-    print("Data after ensuring datetime format:", data.head())
+    logging.debug("Data after ensuring datetime format:")
+    logging.debug(data.head())
 
     # Extract the date part from the datetime
     data["date"] = data["time"].dt.date
 
     # Debugging: Check if 'date' column is added
-    print("Data with 'date' column:", data.head())
+    logging.debug("Data with 'date' column:")
+    logging.debug(data.head())
 
     # Calculate the daily average price
     data["daily_average"] = data[["open", "high", "low", "close"]].mean(axis=1)
@@ -226,8 +240,10 @@ def calculate_daily_average(data):
     daily_avg.columns = ["Date", "Average Price"]
 
     # Debugging: Check the output
-    print("Daily averages calculated:", daily_avg.head())
+    logging.debug("Daily averages calculated:")
+    logging.debug(daily_avg.head())
 
+    logging.info("Daily average prices calculated.")
     return daily_avg
 
 
@@ -242,13 +258,18 @@ def lstm_crypto_forecast(data: pd.DataFrame, days: int) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A DataFrame containing dates and predicted prices.
     """
+    logging.info(f"Running LSTM crypto forecast for {days} days...")
     # Ensure required columns exist
     required_columns = ["time", "close"]
     if not all(col in data.columns for col in required_columns):
         missing_cols = [col for col in required_columns if col not in data.columns]
+        logging.error(f"The data is missing columns: {missing_cols}")
         raise ValueError(f"The data is missing columns: {missing_cols}")
 
     if len(data) < 30:
+        logging.error(
+            "Insufficient data for LSTM training. At least 30 rows are required."
+        )
         raise ValueError(
             "Insufficient data for LSTM training. At least 30 rows are required."
         )
@@ -307,6 +328,7 @@ def lstm_crypto_forecast(data: pd.DataFrame, days: int) -> pd.DataFrame:
         {"Date": future_dates, "Predicted Price": future_predictions.flatten()}
     )
 
+    logging.info("LSTM crypto forecast complete.")
     return predictions
 
 
@@ -325,6 +347,7 @@ def train_lstm_model(X_train, y_train, X_val, y_val, n_steps, n_features):
     Returns:
         keras.Model: Trained LSTM model.
     """
+    logging.info("Training LSTM model...")
     model = Sequential(
         [
             LSTM(64, return_sequences=True, input_shape=(n_steps, n_features)),
@@ -350,6 +373,7 @@ def train_lstm_model(X_train, y_train, X_val, y_val, n_steps, n_features):
     )
 
     model.save("lstm_crypto_model.keras")
+    logging.info("LSTM model training complete.")
     return model
 
 
@@ -367,6 +391,7 @@ def predict_future_prices(model, scaled_data, scaler, n_steps, days):
     Returns:
         np.ndarray: Array of predicted prices.
     """
+    logging.info("Predicting future prices using LSTM model...")
     future_predictions = []
     last_sequence = scaled_data[-n_steps:, :]
     for _ in range(days):
@@ -388,6 +413,7 @@ def predict_future_prices(model, scaled_data, scaler, n_steps, days):
     future_predictions_expanded[:, 0] = future_predictions
     future_predictions = scaler.inverse_transform(future_predictions_expanded)[:, 0]
 
+    logging.info("Future price prediction complete.")
     return future_predictions
 
 
@@ -403,12 +429,16 @@ def calculate_moving_averages(file):
     Returns:
         pd.DataFrame: A DataFrame containing time, daily average price, 7-day moving average, and 30-day moving average.
     """
+    logging.info("Calculating moving averages...")
     # Read the CSV file
     df = pd.read_csv(file)
 
     # Ensure required columns are present
     required_columns = {"time", "open", "high", "low", "close"}
     if not required_columns.issubset(df.columns):
+        logging.error(
+            f"The CSV file must contain the following columns: {required_columns}"
+        )
         raise ValueError(
             f"The CSV file must contain the following columns: {required_columns}"
         )
@@ -435,6 +465,7 @@ def calculate_moving_averages(file):
         "30-Day Moving Average",
     ]
 
+    logging.info("Moving averages calculated.")
     return moving_averages
 
 
@@ -449,12 +480,16 @@ def analyze_prices_by_day(file):
     Returns:
         pd.Series: A Series containing the average daily price change for each day of the week.
     """
+    logging.info("Analyzing prices by day of the week...")
     # Read the CSV file
     df = pd.read_csv(file)
 
     # Ensure required columns are present
     required_columns = {"time", "open", "high", "low", "close"}
     if not required_columns.issubset(df.columns):
+        logging.error(
+            f"The CSV file must contain the following columns: {required_columns}"
+        )
         raise ValueError(
             f"The CSV file must contain the following columns: {required_columns}"
         )
@@ -479,4 +514,5 @@ def analyze_prices_by_day(file):
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     )
 
+    logging.info("Price analysis by day of the week complete.")
     return day_avg_change
