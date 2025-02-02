@@ -2,8 +2,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
-
-from src.streamlit_app.ohlc_functions import (
+from ohlc_functions import (
     analyze_prices_by_day,
     calculate_daily_average,
     calculate_moving_averages,

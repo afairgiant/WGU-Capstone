@@ -1,0 +1,11 @@
+- Letter of Transmittal and a project propsal
+
+- Exectuive Summary directed to IT professionals.
+
+- Business Vison or Requirements document
+- Assessment of the hypothese for acceptance or rejection
+- Visualizations and elements of effective storytelling supporting the data exploration and preparation, data analysis, and data summary, including the phenomenon and its detection
+- Assessment of the product's accuracy
+- The results from the data product testing, revisions, and optimization based on the provided plans, including screenshots
+- Source code and executable file(s)
+- Quick-start guide summarizing the steps necessary to install and use the product
