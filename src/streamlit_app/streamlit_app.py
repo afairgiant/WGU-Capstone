@@ -377,9 +377,7 @@ with tab5:
     st.title("About This App")
     st.write(
         """
-        This application demonstrates how to use tabs in Streamlit to display
-        multiple views. Use the "Charts" tab to upload your CSV and visualize
-        the data.
+        This application is used to predict bitcoin prices and sentiment analysis of news articles.
         """
     )
     logging.info("About tab loaded.")
