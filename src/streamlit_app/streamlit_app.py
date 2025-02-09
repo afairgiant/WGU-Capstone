@@ -317,7 +317,6 @@ with tab3:
                     "Predicted Price"
                 ].diff()
 
-                # Optionally, calculate the percentage change (uncomment if needed)
                 lstm_predictions["Daily % Change"] = (
                     lstm_predictions["Predicted Price"].pct_change() * 100
                 )
